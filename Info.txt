@@ -1,0 +1,49 @@
+Al-Powered HRMS MVP Development Report
+Prepared by: Sahil Tiwari
+Vision Statement
+To build a modern, Al-powered Human Resource Management System that automates recruitment, employee management, and performance tracking-making HR operations smarter, faster, and data-driven for growing companies.
+Tech Stack Overview
+1 Frontend: Next.js, TailwindCSs
+Backend: Next.js API Routes (Node.js)
+Database: MongoDB Atlas Authentication: NextAuth.js / Clerk
+5 Al Layer: OpenAl API (GPT-4/5)
+6 Storage: Vercel Blob / AWS S3
+7 Email: Resend / SendGrid / Nodemailer
+8 Scheduling: Cron jobs (Upstash) Deployment: Vercel
+I MVP Features (3-Month Build Plan)
+1. Al-Powered Recruitment Module
+1 Resume upload & parsing using OpenAI.
+2 Al-based job fit analysis comparing resume vs job description. Automatic ranking of candidates based on Al scores.
+3
+Admin dashboard for applicants and resume insights. Al-generated job descriptions based on role title.
+5
+2. Employee Management Module
+Employee CRUD operations (Add/Edit/View/Delete)
+1
+Profile overview for each employee with details and role info. Al-generated employee summaries and insights.
+3
+3. Performance & Attendance Tracking
+Attendance dashboard with leave requests and approvals.
+1
+2 Monthly review forms and performance reports.
+Al-generated performance summaries and engagement predictions.
+3
+4. Al HR Chat Assistant
+Internal chatbot powered by OpenAl.
+Query handling for recruitment and HR actions.
+Quick operations like sending reminders or status updates.
+5. Authentication + Admin Panel
+Role-based secure login for HRIAdmin and Employees.
+Protected routes and access levels.
+2
+3 Dashboard with analytics and key actions.
+6. Email & Notification System
+1 Automated email alerts for interview scheduling, status updates. Integration with Resend or Nodemailer.
+Optional Slack/Discord notifications.
+3-Month Build Timeline
+1 Month 1: Core backend + Auth+ Recruitment MVP (Resume parsing. job matching, dashboard).
+Month 2: Employee & Performance Modules + AlI Chatbot (CRUD, analytics,
+assistant)
+3 Month 3: Offer letter generation, onboarding, and payroll setup.
+IExpected Outcome
+By the end of 3 months, the MVP will be a fully functional HRMS with Al-powered recruitment, performance analytics, automated HR workflows, and a scalable structure for future expansion.
