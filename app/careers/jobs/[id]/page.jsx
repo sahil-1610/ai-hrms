@@ -93,7 +93,7 @@ export default async function CareersJobDetailPage({ params }) {
       style={{ backgroundColor: settings?.background_color || "#F9FAFB" }}
     >
       {/* Navigation */}
-      <nav className="bg-white shadow-sm border-b sticky top-0 z-50">
+      <nav className="bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700 sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -112,7 +112,7 @@ export default async function CareersJobDetailPage({ params }) {
             </div>
             <Link
               href="/careers"
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
               All Jobs
@@ -185,29 +185,29 @@ export default async function CareersJobDetailPage({ params }) {
           {/* Main Content */}
           <div className="md:col-span-2 space-y-8">
             {/* Job Description */}
-            <div className="bg-white rounded-2xl shadow-sm p-8 border">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border dark:border-gray-700">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
                 About This Role
               </h2>
-              <div className="prose prose-gray max-w-none">
-                {job.description ? (
-                  job.description.split("\n").map((paragraph, index) =>
+              <div className="prose prose-gray dark:prose-invert max-w-none">
+                {(job.jd_text || job.description) ? (
+                  (job.jd_text || job.description).split("\n").map((paragraph, index) =>
                     paragraph.trim() ? (
-                      <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                      <p key={index} className="mb-4 text-gray-700 dark:text-gray-300 leading-relaxed">
                         {paragraph}
                       </p>
                     ) : null
                   )
                 ) : (
-                  <p className="text-gray-500 italic">No description available.</p>
+                  <p className="text-gray-500 dark:text-gray-400 italic">No description available.</p>
                 )}
               </div>
             </div>
 
             {/* Skills */}
             {job.skills && job.skills.length > 0 && (
-              <div className="bg-white rounded-2xl shadow-sm p-8 border">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border dark:border-gray-700">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
                   Required Skills
                 </h2>
                 <div className="flex flex-wrap gap-3">
@@ -232,8 +232,8 @@ export default async function CareersJobDetailPage({ params }) {
             {settings?.show_company_benefits &&
               settings?.benefits &&
               settings.benefits.length > 0 && (
-                <div className="bg-white rounded-2xl shadow-sm p-8 border">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 border dark:border-gray-700">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
                     Why Join Us
                   </h2>
                   <div className="grid sm:grid-cols-2 gap-4">
@@ -247,7 +247,7 @@ export default async function CareersJobDetailPage({ params }) {
                           className="w-2 h-2 rounded-full"
                           style={{ backgroundColor: secondaryColor }}
                         />
-                        <span className="text-gray-700">{benefit}</span>
+                        <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
                       </div>
                     ))}
                   </div>
@@ -258,8 +258,8 @@ export default async function CareersJobDetailPage({ params }) {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Info */}
-            <div className="bg-white rounded-2xl shadow-sm p-6 border sticky top-24">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border dark:border-gray-700 sticky top-24">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                 Job Details
               </h3>
               <div className="space-y-4">
@@ -269,8 +269,8 @@ export default async function CareersJobDetailPage({ params }) {
                     style={{ color: primaryColor }}
                   />
                   <div>
-                    <p className="text-sm text-gray-500">Experience</p>
-                    <p className="font-medium">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Experience</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">
                       {job.experience_min}-{job.experience_max} years
                     </p>
                   </div>
@@ -281,8 +281,8 @@ export default async function CareersJobDetailPage({ params }) {
                     style={{ color: primaryColor }}
                   />
                   <div>
-                    <p className="text-sm text-gray-500">Location</p>
-                    <p className="font-medium">{job.location}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Location</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{job.location}</p>
                   </div>
                 </div>
                 {salaryDisplay && (
@@ -292,8 +292,8 @@ export default async function CareersJobDetailPage({ params }) {
                       style={{ color: primaryColor }}
                     />
                     <div>
-                      <p className="text-sm text-gray-500">Salary</p>
-                      <p className="font-medium">{salaryDisplay}</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Salary</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{salaryDisplay}</p>
                     </div>
                   </div>
                 )}
@@ -303,8 +303,8 @@ export default async function CareersJobDetailPage({ params }) {
                     style={{ color: primaryColor }}
                   />
                   <div>
-                    <p className="text-sm text-gray-500">Applicants</p>
-                    <p className="font-medium">{applicationCount} candidates</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Applicants</p>
+                    <p className="font-medium text-gray-900 dark:text-gray-100">{applicationCount} candidates</p>
                   </div>
                 </div>
                 {job.number_of_positions && job.number_of_positions > 1 && (
@@ -314,14 +314,14 @@ export default async function CareersJobDetailPage({ params }) {
                       style={{ color: primaryColor }}
                     />
                     <div>
-                      <p className="text-sm text-gray-500">Open Positions</p>
-                      <p className="font-medium">{job.number_of_positions} positions</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Open Positions</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">{job.number_of_positions} positions</p>
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="mt-6 pt-6 border-t">
+              <div className="mt-6 pt-6 border-t dark:border-gray-700">
                 <Link
                   href={`/careers/jobs/${job.id}/apply`}
                   className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90"
@@ -330,7 +330,7 @@ export default async function CareersJobDetailPage({ params }) {
                   <Send className="h-5 w-5" />
                   Apply for this job
                 </Link>
-                <p className="text-center text-sm text-gray-500 mt-3">
+                <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-3">
                   Takes less than 5 minutes
                 </p>
               </div>
@@ -338,12 +338,12 @@ export default async function CareersJobDetailPage({ params }) {
 
             {/* Company Info */}
             {settings?.company_name && (
-              <div className="bg-white rounded-2xl shadow-sm p-6 border">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border dark:border-gray-700">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
                   About {settings.company_name}
                 </h3>
                 {settings.company_description && (
-                  <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4">
                     {settings.company_description.length > 200
                       ? `${settings.company_description.substring(0, 200)}...`
                       : settings.company_description}
@@ -367,13 +367,13 @@ export default async function CareersJobDetailPage({ params }) {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t py-8 mt-12">
+      <footer className="bg-white dark:bg-gray-900 border-t dark:border-gray-700 py-8 mt-12">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
             © {new Date().getFullYear()} {settings?.company_name || "Company"}. All
             rights reserved.
           </p>
-          <p className="text-gray-400 text-xs mt-2">Powered by AI-HRMS</p>
+          <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">Powered by AI-HRMS</p>
         </div>
       </footer>
     </div>

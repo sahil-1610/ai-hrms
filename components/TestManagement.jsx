@@ -201,22 +201,22 @@ export function TestManagement({ jobId }) {
                 </div>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPreviewOpen(true)}
-                  className="gap-2"
+                  className="gap-1"
                 >
                   <Eye className="h-4 w-4" />
-                  Preview Questions
+                  Preview
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={handleGenerateTest}
                   disabled={generating}
-                  className="gap-2"
+                  className="gap-1"
                 >
                   {generating ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -230,7 +230,7 @@ export function TestManagement({ jobId }) {
                   size="sm"
                   onClick={handleDeleteTest}
                   disabled={deleting}
-                  className="gap-2 text-red-600 hover:text-red-700"
+                  className="gap-1 text-red-600 hover:text-red-700"
                 >
                   {deleting ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

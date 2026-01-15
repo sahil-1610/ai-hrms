@@ -69,6 +69,37 @@ export default function ApplyPage() {
     }
   };
 
+  // Extract text from PDF on client-side to avoid server-side worker issues
+  const extractPdfText = async (file) => {
+    try {
+      // Dynamically import pdfjs-dist to avoid SSR issues
+      const pdfjsLib = await import("pdfjs-dist");
+
+      // Configure PDF.js worker from CDN
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const numPages = pdf.numPages;
+      let fullText = "";
+
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item) => item.str).join(" ");
+        fullText += pageText + "\n";
+      }
+
+      // Clean up text
+      return fullText
+        .replace(/\s+/g, " ")
+        .replace(/\n\s*\n/g, "\n")
+        .trim();
+    } catch (error) {
+      throw new Error(`Failed to parse PDF: ${error.message}`);
+    }
+  };
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -96,13 +127,32 @@ export default function ApplyPage() {
   const parseResume = async (file) => {
     setParsing(true);
     try {
-      const formData = new FormData();
-      formData.append("resume", file);
+      let response;
 
-      const response = await fetch("/api/parse-resume", {
-        method: "POST",
-        body: formData,
-      });
+      // For PDFs, extract text client-side then send to API
+      if (file.type === "application/pdf") {
+        toast.info("Extracting text from PDF...");
+        const extractedText = await extractPdfText(file);
+
+        if (!extractedText || extractedText.length < 50) {
+          throw new Error("PDF appears to be empty or contains only images. Please try a text-based PDF.");
+        }
+
+        response = await fetch("/api/parse-resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: extractedText }),
+        });
+      } else {
+        // For DOCX, send to server for parsing
+        const formDataObj = new FormData();
+        formDataObj.append("resume", file);
+
+        response = await fetch("/api/parse-resume", {
+          method: "POST",
+          body: formDataObj,
+        });
+      }
 
       const data = await response.json();
 
@@ -196,9 +246,9 @@ export default function ApplyPage() {
     }
   };
 
-  if (loading || status === "loading") {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
@@ -209,9 +259,9 @@ export default function ApplyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" asChild className="mb-4">
             <Link href={`/jobs/${job.id}`}>
@@ -220,10 +270,10 @@ export default function ApplyPage() {
             </Link>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
               Apply for {job.title}
             </h1>
-            <p className="text-gray-600 mt-1">{job.location}</p>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">{job.location}</p>
           </div>
         </div>
       </div>
@@ -232,17 +282,17 @@ export default function ApplyPage() {
       <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Resume Upload */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle>Upload Resume</CardTitle>
-              <CardDescription>
+              <CardTitle className="dark:text-gray-100">Upload Resume</CardTitle>
+              <CardDescription className="dark:text-gray-400">
                 Our AI will automatically parse your resume and fill in the form
                 below
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors">
+                <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center hover:border-blue-400 dark:hover:border-blue-500 transition-colors">
                   <input
                     type="file"
                     id="resume"
@@ -255,10 +305,10 @@ export default function ApplyPage() {
                     {parsing ? (
                       <div className="space-y-3">
                         <Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-600" />
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           Parsing your resume...
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           This may take a few seconds
                         </p>
                       </div>
@@ -268,10 +318,10 @@ export default function ApplyPage() {
                           <Check className="h-8 w-8 text-green-600 mr-2" />
                           <FileText className="h-12 w-12 text-gray-400" />
                         </div>
-                        <p className="text-sm font-medium text-gray-700">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                           {resumeFile.name}
                         </p>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
                           {(resumeFile.size / 1024).toFixed(2)} KB
                         </p>
                         <Button type="button" variant="outline" size="sm">
@@ -282,10 +332,10 @@ export default function ApplyPage() {
                       <div className="space-y-3">
                         <Upload className="mx-auto h-12 w-12 text-gray-400" />
                         <div>
-                          <p className="text-sm font-medium text-gray-700">
+                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Click to upload or drag and drop
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             PDF or DOCX (max 10MB)
                           </p>
                         </div>
@@ -294,11 +344,11 @@ export default function ApplyPage() {
                   </label>
                 </div>
                 {resumeFile && (
-                  <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <Sparkles className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-900">
+                  <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-900 dark:text-blue-100">
                       <p className="font-medium">AI Auto-fill Complete</p>
-                      <p className="text-blue-700">
+                      <p className="text-blue-700 dark:text-blue-300">
                         Please review and edit the information below before
                         submitting
                       </p>
@@ -310,17 +360,17 @@ export default function ApplyPage() {
           </Card>
 
           {/* Personal Information */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-              <CardDescription>
+              <CardTitle className="dark:text-gray-100">Personal Information</CardTitle>
+              <CardDescription className="dark:text-gray-400">
                 All fields marked with * are required
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">
+                  <Label htmlFor="name" className="dark:text-gray-200">
                     Full Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -329,10 +379,11 @@ export default function ApplyPage() {
                     value={formData.name}
                     onChange={handleChange}
                     required
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">
+                  <Label htmlFor="email" className="dark:text-gray-200">
                     Email <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -342,11 +393,12 @@ export default function ApplyPage() {
                     value={formData.email}
                     onChange={handleChange}
                     required
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">
+                <Label htmlFor="phone" className="dark:text-gray-200">
                   Phone Number <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -355,29 +407,31 @@ export default function ApplyPage() {
                   value={formData.phone}
                   onChange={handleChange}
                   required
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Professional Information */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle>Professional Information</CardTitle>
+              <CardTitle className="dark:text-gray-100">Professional Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="currentCompany">Current Company</Label>
+                  <Label htmlFor="currentCompany" className="dark:text-gray-200">Current Company</Label>
                   <Input
                     id="currentCompany"
                     name="currentCompany"
                     value={formData.currentCompany}
                     onChange={handleChange}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="experience">Years of Experience</Label>
+                  <Label htmlFor="experience" className="dark:text-gray-200">Years of Experience</Label>
                   <Input
                     id="experience"
                     name="experience"
@@ -385,21 +439,23 @@ export default function ApplyPage() {
                     min="0"
                     value={formData.experience}
                     onChange={handleChange}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="skills">Skills (comma-separated)</Label>
+                <Label htmlFor="skills" className="dark:text-gray-200">Skills (comma-separated)</Label>
                 <Input
                   id="skills"
                   name="skills"
                   placeholder="e.g., React, Node.js, Python"
                   value={formData.skills}
                   onChange={handleChange}
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="education">Education</Label>
+                <Label htmlFor="education" className="dark:text-gray-200">Education</Label>
                 <Textarea
                   id="education"
                   name="education"
@@ -407,16 +463,17 @@ export default function ApplyPage() {
                   value={formData.education}
                   onChange={handleChange}
                   rows={3}
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                 />
               </div>
             </CardContent>
           </Card>
 
           {/* Cover Letter */}
-          <Card>
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
             <CardHeader>
-              <CardTitle>Cover Letter (Optional)</CardTitle>
-              <CardDescription>
+              <CardTitle className="dark:text-gray-100">Cover Letter (Optional)</CardTitle>
+              <CardDescription className="dark:text-gray-400">
                 Tell us why you&apos;re a great fit for this role
               </CardDescription>
             </CardHeader>
@@ -428,6 +485,7 @@ export default function ApplyPage() {
                 value={formData.coverLetter}
                 onChange={handleChange}
                 rows={6}
+                className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               />
             </CardContent>
           </Card>

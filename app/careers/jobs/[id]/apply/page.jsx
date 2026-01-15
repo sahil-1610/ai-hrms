@@ -81,6 +81,37 @@ export default function CareersApplyPage() {
   const primaryColor = settings?.primary_color || "#3B82F6";
   const secondaryColor = settings?.secondary_color || "#8B5CF6";
 
+  // Extract text from PDF on client-side to avoid server-side worker issues
+  const extractPdfText = async (file) => {
+    try {
+      // Dynamically import pdfjs-dist to avoid SSR issues
+      const pdfjsLib = await import("pdfjs-dist");
+
+      // Configure PDF.js worker from CDN
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const numPages = pdf.numPages;
+      let fullText = "";
+
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item) => item.str).join(" ");
+        fullText += pageText + "\n";
+      }
+
+      // Clean up text
+      return fullText
+        .replace(/\s+/g, " ")
+        .replace(/\n\s*\n/g, "\n")
+        .trim();
+    } catch (error) {
+      throw new Error(`Failed to parse PDF: ${error.message}`);
+    }
+  };
+
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -106,13 +137,32 @@ export default function CareersApplyPage() {
   const parseResume = async (file) => {
     setParsing(true);
     try {
-      const formData = new FormData();
-      formData.append("resume", file);
+      let response;
 
-      const response = await fetch("/api/parse-resume", {
-        method: "POST",
-        body: formData,
-      });
+      // For PDFs, extract text client-side then send to API
+      if (file.type === "application/pdf") {
+        toast.info("Extracting text from PDF...");
+        const extractedText = await extractPdfText(file);
+
+        if (!extractedText || extractedText.length < 50) {
+          throw new Error("PDF appears to be empty or contains only images. Please try a text-based PDF.");
+        }
+
+        response = await fetch("/api/parse-resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: extractedText }),
+        });
+      } else {
+        // For DOCX, send to server for parsing
+        const formDataObj = new FormData();
+        formDataObj.append("resume", file);
+
+        response = await fetch("/api/parse-resume", {
+          method: "POST",
+          body: formDataObj,
+        });
+      }
 
       const data = await response.json();
 
@@ -289,7 +339,7 @@ export default function CareersApplyPage() {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Resume Upload */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border-2 border-gray-200">
             <div className="flex items-center gap-3 mb-4">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -384,7 +434,7 @@ export default function CareersApplyPage() {
           </div>
 
           {/* Personal Information */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border-2 border-gray-200">
             <div className="flex items-center gap-3 mb-6">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -406,12 +456,12 @@ export default function CareersApplyPage() {
               <div className="space-y-2">
                 <label
                   htmlFor="name"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-800"
                 >
                   Full Name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                   <input
                     type="text"
                     id="name"
@@ -419,7 +469,7 @@ export default function CareersApplyPage() {
                     value={formData.name}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
                     placeholder="John Doe"
                   />
                 </div>
@@ -427,12 +477,12 @@ export default function CareersApplyPage() {
               <div className="space-y-2">
                 <label
                   htmlFor="email"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-800"
                 >
                   Email <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                   <input
                     type="email"
                     id="email"
@@ -440,7 +490,7 @@ export default function CareersApplyPage() {
                     value={formData.email}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
                     placeholder="john@example.com"
                   />
                 </div>
@@ -449,12 +499,12 @@ export default function CareersApplyPage() {
             <div className="mt-4 space-y-2">
               <label
                 htmlFor="phone"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-800"
               >
                 Phone Number <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <input
                   type="tel"
                   id="phone"
@@ -462,7 +512,7 @@ export default function CareersApplyPage() {
                   value={formData.phone}
                   onChange={handleChange}
                   required
-                  className="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
                   placeholder="+1 (555) 123-4567"
                 />
               </div>
@@ -470,7 +520,7 @@ export default function CareersApplyPage() {
           </div>
 
           {/* Professional Information */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border-2 border-gray-200">
             <div className="flex items-center gap-3 mb-6">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -492,7 +542,7 @@ export default function CareersApplyPage() {
               <div className="space-y-2">
                 <label
                   htmlFor="currentCompany"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-800"
                 >
                   Current Company
                 </label>
@@ -502,14 +552,14 @@ export default function CareersApplyPage() {
                   name="currentCompany"
                   value={formData.currentCompany}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
                   placeholder="Acme Inc."
                 />
               </div>
               <div className="space-y-2">
                 <label
                   htmlFor="experience"
-                  className="block text-sm font-medium text-gray-700"
+                  className="block text-sm font-semibold text-gray-800"
                 >
                   Years of Experience
                 </label>
@@ -520,7 +570,7 @@ export default function CareersApplyPage() {
                   min="0"
                   value={formData.experience}
                   onChange={handleChange}
-                  className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
                   placeholder="5"
                 />
               </div>
@@ -528,7 +578,7 @@ export default function CareersApplyPage() {
             <div className="mt-4 space-y-2">
               <label
                 htmlFor="skills"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-800"
               >
                 Skills (comma-separated)
               </label>
@@ -539,13 +589,13 @@ export default function CareersApplyPage() {
                 placeholder="e.g., React, Node.js, Python"
                 value={formData.skills}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400"
               />
             </div>
             <div className="mt-4 space-y-2">
               <label
                 htmlFor="education"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-semibold text-gray-800"
               >
                 <GraduationCap className="inline h-4 w-4 mr-1" />
                 Education
@@ -557,13 +607,13 @@ export default function CareersApplyPage() {
                 value={formData.education}
                 onChange={handleChange}
                 rows={3}
-                className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400 resize-none"
               />
             </div>
           </div>
 
           {/* Cover Letter */}
-          <div className="bg-white rounded-2xl shadow-sm p-6 border">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border-2 border-gray-200">
             <div className="flex items-center gap-3 mb-6">
               <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
@@ -588,7 +638,7 @@ export default function CareersApplyPage() {
               value={formData.coverLetter}
               onChange={handleChange}
               rows={6}
-              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-900 placeholder-gray-400 resize-none"
             />
           </div>
 

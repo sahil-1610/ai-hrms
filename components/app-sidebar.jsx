@@ -20,6 +20,7 @@ import {
   ClipboardList,
   BarChart3,
   Calendar,
+  FolderOpen,
 } from "lucide-react";
 
 import {
@@ -60,6 +61,11 @@ const mainMenuItems = [
     title: "Candidates",
     url: "/admin/candidates",
     icon: Users,
+  },
+  {
+    title: "Assets",
+    url: "/admin/assets",
+    icon: FolderOpen,
   },
   {
     title: "Settings",

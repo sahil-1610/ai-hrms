@@ -517,7 +517,8 @@ export default function CandidateDetailPage() {
   // Determine stage statuses
   const stageIndex = PIPELINE_STAGES.findIndex((s) => s.key === candidate.current_stage);
   const hasTestToken = !!candidate.test_token;
-  const hasTestScore = candidate.test_score !== null && candidate.test_score !== undefined;
+  // Check if test was actually taken (score > 0 means test was completed, since 0 is the default)
+  const hasTestScore = candidate.test_score !== null && candidate.test_score !== undefined && candidate.test_score > 0;
   const hasInterviewToken = !!candidate.interview_token;
   const hasInterviewCompleted = !!candidate.interview_completed_at;
 
@@ -704,7 +705,7 @@ export default function CandidateDetailPage() {
                 <div className="flex gap-2">
                   {candidate.resume_url && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer">
+                      <a href={`/api/applications/${params.id}/resume`} target="_blank" rel="noopener noreferrer">
                         <FileText className="mr-2 h-4 w-4" />
                         View Resume
                       </a>
@@ -794,8 +795,43 @@ export default function CandidateDetailPage() {
                     </div>
 
                     {aiData.skillsMatch && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        Skills Match: {aiData.skillsMatch} | Experience Match: {aiData.experienceMatch}
+                      <div className="space-y-2 mt-3 pt-3 border-t dark:border-gray-600">
+                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Skills Analysis</p>
+                        <div className="space-y-1.5">
+                          {aiData.skillsMatch.matched && aiData.skillsMatch.matched.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-xs text-green-600 dark:text-green-400 mr-1">Matched:</span>
+                              {aiData.skillsMatch.matched.slice(0, 5).map((skill, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs py-0 border-green-500 text-green-600 dark:text-green-400">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {aiData.skillsMatch.matched.length > 5 && (
+                                <span className="text-xs text-gray-500">+{aiData.skillsMatch.matched.length - 5} more</span>
+                              )}
+                            </div>
+                          )}
+                          {aiData.skillsMatch.missing && aiData.skillsMatch.missing.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-xs text-red-600 dark:text-red-400 mr-1">Missing:</span>
+                              {aiData.skillsMatch.missing.slice(0, 3).map((skill, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs py-0 border-red-400 text-red-600 dark:text-red-400">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {aiData.skillsMatch.missing.length > 3 && (
+                                <span className="text-xs text-gray-500">+{aiData.skillsMatch.missing.length - 3} more</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {aiData.experienceMatch && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            Experience: {typeof aiData.experienceMatch === 'object'
+                              ? `${aiData.experienceMatch.candidate || 0} years (required: ${aiData.experienceMatch.required || 0})`
+                              : aiData.experienceMatch}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

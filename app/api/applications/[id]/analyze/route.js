@@ -8,18 +8,39 @@ import { extractTextFromPDF, extractTextFromDOCX } from "@/lib/resumeParser";
 
 /**
  * Fetch resume file from Cloudinary URL and return as buffer
+ * Uses internal proxy API if direct fetch fails
  */
-async function fetchResumeFromUrl(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch resume: ${response.status}`);
+async function fetchResumeFromUrl(url, applicationId) {
+  // First try direct fetch
+  try {
+    const response = await fetch(url);
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || '';
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Check if we got actual PDF content (PDFs start with %PDF)
+      const header = buffer.slice(0, 5).toString();
+      if (header.startsWith('%PDF') || contentType.includes('pdf') || contentType.includes('octet-stream')) {
+        console.log(`Successfully fetched resume: ${buffer.length} bytes, content-type: ${contentType}`);
+        return buffer;
+      } else {
+        console.log(`Received non-PDF content: ${header}, content-type: ${contentType}`);
+        throw new Error('Received non-PDF content from Cloudinary');
+      }
+    } else {
+      console.log(`Direct fetch failed with status: ${response.status}`);
+      throw new Error(`Fetch failed: ${response.status}`);
+    }
+  } catch (directError) {
+    console.error("Direct fetch failed:", directError.message);
+    throw new Error(`Failed to fetch resume: ${directError.message}`);
   }
-  const arrayBuffer = await response.arrayBuffer();
-  return Buffer.from(arrayBuffer);
 }
 
 /**
  * Detect file type from URL or content-type
+ * Defaults to PDF for Cloudinary raw URLs without extension
  */
 function getFileType(url) {
   const lowercaseUrl = url.toLowerCase();
@@ -30,7 +51,7 @@ function getFileType(url) {
   } else if (lowercaseUrl.includes(".doc")) {
     return "application/msword";
   }
-  // Default to PDF if we can't determine
+  // Default to PDF for Cloudinary raw uploads (resumes are typically PDFs)
   return "application/pdf";
 }
 

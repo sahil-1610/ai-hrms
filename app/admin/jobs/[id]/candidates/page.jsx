@@ -1014,7 +1014,7 @@ export default function CandidatesPage() {
                     {selectedCandidate.resume_url && (
                       <Button variant="outline" asChild>
                         <a
-                          href={selectedCandidate.resume_url}
+                          href={`/api/applications/${selectedCandidate.id}/resume`}
                           target="_blank"
                           rel="noopener noreferrer"
                         >

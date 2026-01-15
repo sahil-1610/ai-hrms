@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,6 @@ import {
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { data: session } = useSession();
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -63,7 +61,7 @@ export default function JobDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
       </div>
     );
@@ -71,9 +69,9 @@ export default function JobDetailPage() {
 
   if (!job) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Job not found</h2>
+          <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">Job not found</h2>
           <Button asChild>
             <Link href="/jobs">Back to Jobs</Link>
           </Button>
@@ -82,10 +80,12 @@ export default function JobDetailPage() {
     );
   }
 
+  const description = job.jd_text || job.description || "";
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white border-b">
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700">
         <div className="max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" asChild className="mb-4">
             <Link href="/jobs">
@@ -96,8 +96,8 @@ export default function JobDetailPage() {
 
           <div className="flex items-start justify-between">
             <div className="space-y-3 flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">{job.title}</h1>
-              <div className="flex flex-wrap gap-4 text-gray-600">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">{job.title}</h1>
+              <div className="flex flex-wrap gap-4 text-gray-600 dark:text-gray-400">
                 <span className="flex items-center">
                   <MapPin className="h-4 w-4 mr-1" />
                   {job.location}
@@ -129,26 +129,32 @@ export default function JobDetailPage() {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Job Description */}
-            <Card>
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle>Job Description</CardTitle>
+                <CardTitle className="dark:text-gray-100">Job Description</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm max-w-none">
-                  {job.description.split("\n").map((paragraph, index) => (
-                    <p key={index} className="mb-4 text-gray-700">
-                      {paragraph}
-                    </p>
-                  ))}
+                <div className="prose prose-sm max-w-none dark:prose-invert">
+                  {description ? (
+                    description.split("\n").map((paragraph, index) =>
+                      paragraph.trim() ? (
+                        <p key={index} className="mb-4 text-gray-700 dark:text-gray-300">
+                          {paragraph}
+                        </p>
+                      ) : null
+                    )
+                  ) : (
+                    <p className="text-gray-500 dark:text-gray-400 italic">No description available.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
             {/* Required Skills */}
             {job.skills && job.skills.length > 0 && (
-              <Card>
+              <Card className="dark:bg-gray-800 dark:border-gray-700">
                 <CardHeader>
-                  <CardTitle>Required Skills</CardTitle>
+                  <CardTitle className="dark:text-gray-100">Required Skills</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
@@ -156,7 +162,7 @@ export default function JobDetailPage() {
                       <Badge
                         key={index}
                         variant="secondary"
-                        className="text-sm"
+                        className="text-sm dark:bg-gray-700 dark:text-gray-200"
                       >
                         {skill}
                       </Badge>
@@ -170,39 +176,39 @@ export default function JobDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Quick Info */}
-            <Card>
+            <Card className="dark:bg-gray-800 dark:border-gray-700">
               <CardHeader>
-                <CardTitle>Job Information</CardTitle>
+                <CardTitle className="dark:text-gray-100">Job Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Experience Required
                   </p>
-                  <p className="text-base font-semibold">
+                  <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                     {job.experience_min} - {job.experience_max} years
                   </p>
                 </div>
-                <Separator />
+                <Separator className="dark:bg-gray-700" />
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Location</p>
-                  <p className="text-base font-semibold">{job.location}</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Location</p>
+                  <p className="text-base font-semibold text-gray-900 dark:text-gray-100">{job.location}</p>
                 </div>
-                <Separator />
+                <Separator className="dark:bg-gray-700" />
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Salary Range
                   </p>
-                  <p className="text-base font-semibold">
+                  <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                     {formatSalary(job.salary_min, job.salary_max)}
                   </p>
                 </div>
-                <Separator />
+                <Separator className="dark:bg-gray-700" />
                 <div>
-                  <p className="text-sm font-medium text-gray-500">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Applicants
                   </p>
-                  <p className="text-base font-semibold">
+                  <p className="text-base font-semibold text-gray-900 dark:text-gray-100">
                     {job.applicationCount || 0} candidates applied
                   </p>
                 </div>
@@ -210,38 +216,21 @@ export default function JobDetailPage() {
             </Card>
 
             {/* Apply CTA */}
-            <Card className="bg-blue-50 border-blue-200">
+            <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
               <CardContent className="pt-6">
                 <div className="text-center space-y-4">
-                  <Briefcase className="mx-auto h-12 w-12 text-blue-600" />
+                  <Briefcase className="mx-auto h-12 w-12 text-blue-600 dark:text-blue-400" />
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">
-                      Ready to Apply?
+                    <h3 className="font-semibold text-lg mb-2 text-gray-900 dark:text-gray-100">
+                      Interested in this role?
                     </h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Our AI will help match your skills with this position
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Submit your application and our AI will match your skills
                     </p>
                   </div>
-                  {session ? (
-                    <Button asChild className="w-full" size="lg">
-                      <Link href={`/jobs/${job.id}/apply`}>Apply Now</Link>
-                    </Button>
-                  ) : (
-                    <div className="space-y-2">
-                      <Button asChild className="w-full" size="lg">
-                        <Link href="/auth/signin">Sign In to Apply</Link>
-                      </Button>
-                      <p className="text-xs text-gray-500">
-                        Don&apos;t have an account?{" "}
-                        <Link
-                          href="/auth/signup"
-                          className="text-blue-600 hover:underline"
-                        >
-                          Sign up
-                        </Link>
-                      </p>
-                    </div>
-                  )}
+                  <Button asChild className="w-full" size="lg">
+                    <Link href={`/jobs/${job.id}/apply`}>Apply Now</Link>
+                  </Button>
                 </div>
               </CardContent>
             </Card>

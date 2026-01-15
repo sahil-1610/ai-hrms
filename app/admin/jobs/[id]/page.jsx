@@ -43,6 +43,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { TestManagement } from "@/components/TestManagement";
 
 export default function AdminJobDetailPage() {
   const { id } = useParams();
@@ -451,6 +452,9 @@ export default function AdminJobDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* MCQ Test Management */}
+          <TestManagement jobId={id} />
 
           {/* Job Details */}
           <Card className="dark:bg-gray-800 dark:border-gray-700">
