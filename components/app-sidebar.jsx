@@ -16,6 +16,10 @@ import {
   Building2,
   Plus,
   Search,
+  Globe,
+  ClipboardList,
+  BarChart3,
+  Calendar,
 } from "lucide-react";
 
 import {
@@ -57,18 +61,24 @@ const mainMenuItems = [
     url: "/admin/candidates",
     icon: Users,
   },
+  {
+    title: "Settings",
+    url: "/admin/settings",
+    icon: Settings,
+  },
 ];
 
 const quickActions = [
   {
     title: "Create Job",
-    url: "/admin/jobs/new",
+    url: "/admin/jobs/create",
     icon: Plus,
   },
   {
-    title: "Search Applications",
-    url: "/admin/candidates",
-    icon: Search,
+    title: "View Career Page",
+    url: "/careers",
+    icon: Globe,
+    external: true,
   },
 ];
 
@@ -108,7 +118,7 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.url}
+                    isActive={pathname === item.url || pathname.startsWith(item.url + "/")}
                     tooltip={item.title}
                   >
                     <Link href={item.url}>
@@ -130,10 +140,17 @@ export function AppSidebar() {
               {quickActions.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild tooltip={item.title}>
-                    <Link href={item.url}>
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </Link>
+                    {item.external ? (
+                      <a href={item.url} target="_blank" rel="noopener noreferrer">
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </a>
+                    ) : (
+                      <Link href={item.url}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

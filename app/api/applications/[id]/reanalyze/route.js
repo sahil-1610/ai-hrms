@@ -36,7 +36,7 @@ export async function POST(request, { params }) {
 
     const job = application.jobs;
 
-    if (!application.resume_text || !job.description) {
+    if (!application.resume_text || !job.jd_text) {
       return NextResponse.json(
         {
           error:
@@ -57,12 +57,12 @@ export async function POST(request, { params }) {
     // Perform AI match analysis
     const aiMatchAnalysis = await matchResumeToJob(
       application.resume_text,
-      job.description,
+      job.jd_text,
       {
         title: job.title,
-        skills: job.required_skills || [],
-        minExp: job.min_experience || 0,
-        maxExp: job.max_experience || 5,
+        skills: job.skills || [],
+        minExp: job.experience_min || 0,
+        maxExp: job.experience_max || 5,
         location: job.location,
       }
     );

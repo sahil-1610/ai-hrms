@@ -98,7 +98,7 @@ export default function ApplicationSuccessPage() {
               </p>
             </div>
 
-            {matchScore && (
+            {matchScore && matchScore !== "undefined" && matchScore !== "null" && (
               <div>
                 <label className="text-sm font-medium text-gray-700">
                   Initial Match Score
@@ -116,6 +116,22 @@ export default function ApplicationSuccessPage() {
                   >
                     {matchScore}% Match
                   </Badge>
+                </div>
+              </div>
+            )}
+
+            {(!matchScore || matchScore === "undefined" || matchScore === "null") && (
+              <div>
+                <label className="text-sm font-medium text-gray-700">
+                  Resume Analysis
+                </label>
+                <div className="mt-1">
+                  <Badge variant="outline" className="text-sm px-3 py-1">
+                    Pending Review
+                  </Badge>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Your resume will be analyzed by our HR team
+                  </p>
                 </div>
               </div>
             )}

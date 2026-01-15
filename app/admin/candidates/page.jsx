@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -16,52 +16,310 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import AdvancedSearch from "@/components/AdvancedSearch";
+import BulkOperations from "@/components/BulkOperations";
 import {
   Users,
-  X,
   Mail,
   Phone,
   Briefcase,
   GraduationCap,
   FileText,
   Star,
-  CheckCircle,
-  XCircle,
   Loader2,
-  Filter,
+  ClipboardList,
+  Mic,
+  Video,
+  ChevronRight,
+  MapPin,
+  Calendar,
+  TrendingUp,
+  UserCheck,
+  Clock,
 } from "lucide-react";
+
+// Pipeline stage definitions
+const PIPELINE_STAGES = [
+  { key: "resume_screening", label: "Resume", shortLabel: "Resume", icon: FileText },
+  { key: "mcq_test", label: "MCQ Test", shortLabel: "MCQ", icon: ClipboardList },
+  { key: "async_interview", label: "Async Interview", shortLabel: "Async", icon: Mic },
+  { key: "live_interview", label: "Live Interview", shortLabel: "Live", icon: Video },
+  { key: "offer", label: "Offer", shortLabel: "Offer", icon: Star },
+];
+
+// Pipeline Stage Indicator Component
+function PipelineStageIndicator({ currentStage, small = false }) {
+  const stageIndex = PIPELINE_STAGES.findIndex((s) => s.key === currentStage);
+
+  if (currentStage === "hired") {
+    return (
+      <Badge className="bg-green-100 text-green-700 border-green-300 hover:bg-green-100">
+        <UserCheck className="w-3 h-3 mr-1" />
+        Hired
+      </Badge>
+    );
+  }
+
+  if (currentStage === "rejected") {
+    return (
+      <Badge variant="destructive" className="opacity-75">
+        Rejected
+      </Badge>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-1">
+      {PIPELINE_STAGES.map((stage, idx) => {
+        const isCompleted = idx < stageIndex;
+        const isCurrent = idx === stageIndex;
+
+        return (
+          <div key={stage.key} className="flex items-center">
+            <div
+              className={`${small ? "w-2 h-2" : "w-2.5 h-2.5"} rounded-full transition-colors ${
+                isCompleted
+                  ? "bg-green-500"
+                  : isCurrent
+                  ? "bg-blue-500 ring-2 ring-blue-200 dark:ring-blue-800"
+                  : "bg-gray-200 dark:bg-gray-600"
+              }`}
+              title={stage.label}
+            />
+            {idx < PIPELINE_STAGES.length - 1 && (
+              <div
+                className={`w-2 h-0.5 ${
+                  isCompleted ? "bg-green-500" : "bg-gray-200 dark:bg-gray-600"
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+      {stageIndex >= 0 && (
+        <span className="text-xs font-medium text-blue-600 dark:text-blue-400 ml-1">
+          {PIPELINE_STAGES[stageIndex]?.shortLabel || currentStage}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Candidate Card Component
+function CandidateCard({ candidate, jobTitle, onClick, isSelected, onSelect }) {
+  const getScoreColor = (score) => {
+    if (score >= 80) return "text-green-600 bg-green-50 border-green-200";
+    if (score >= 60) return "text-blue-600 bg-blue-50 border-blue-200";
+    if (score >= 40) return "text-yellow-600 bg-yellow-50 border-yellow-200";
+    return "text-red-600 bg-red-50 border-red-200";
+  };
+
+  return (
+    <div
+      className={`group bg-white dark:bg-gray-800 rounded-xl border p-4 hover:shadow-lg transition-all cursor-pointer ${
+        isSelected
+          ? "border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800"
+          : "border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={(checked) => onSelect?.(candidate.id, checked)}
+            className="data-[state=checked]:bg-blue-500"
+          />
+        </div>
+        <div className="flex-1 min-w-0" onClick={onClick}>
+          <div className="flex items-center gap-2 mb-2">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate">
+              {candidate.name}
+            </h4>
+            <PipelineStageIndicator
+              currentStage={candidate.current_stage || "resume_screening"}
+              small
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+            <span className="flex items-center gap-1">
+              <Mail className="w-3.5 h-3.5" />
+              <span className="truncate max-w-[180px]">{candidate.email}</span>
+            </span>
+            {candidate.experience && (
+              <span className="flex items-center gap-1">
+                <Briefcase className="w-3.5 h-3.5" />
+                {candidate.experience}y exp
+              </span>
+            )}
+          </div>
+          {candidate.skills && candidate.skills.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {candidate.skills.slice(0, 3).map((skill, idx) => (
+                <Badge
+                  key={idx}
+                  variant="secondary"
+                  className="text-xs px-2 py-0 dark:bg-gray-700 dark:text-gray-300"
+                >
+                  {skill}
+                </Badge>
+              ))}
+              {candidate.skills.length > 3 && (
+                <Badge
+                  variant="secondary"
+                  className="text-xs px-2 py-0 dark:bg-gray-700 dark:text-gray-300"
+                >
+                  +{candidate.skills.length - 3}
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div
+            className={`text-xl font-bold px-3 py-1 rounded-lg border ${getScoreColor(
+              candidate.resume_match_score || 0
+            )}`}
+          >
+            {Math.round(candidate.resume_match_score || 0)}%
+          </div>
+          <span className="text-xs text-gray-400">
+            {new Date(candidate.created_at).toLocaleDateString()}
+          </span>
+        </div>
+      </div>
+      <div className="flex items-center justify-end mt-3 pt-3 border-t dark:border-gray-700" onClick={onClick}>
+        <span className="text-xs text-blue-600 dark:text-blue-400 font-medium group-hover:underline flex items-center">
+          View Profile
+          <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Job Category Section Component
+function JobCategorySection({ job, candidates, onCandidateClick, selectedIds, onSelect }) {
+  const [expanded, setExpanded] = useState(true);
+
+  const stats = useMemo(() => {
+    return {
+      total: candidates.length,
+      avgScore: candidates.length > 0
+        ? Math.round(
+            candidates.reduce((sum, c) => sum + (c.resume_match_score || 0), 0) /
+              candidates.length
+          )
+        : 0,
+      inProgress: candidates.filter(
+        (c) => !["hired", "rejected"].includes(c.current_stage)
+      ).length,
+      hired: candidates.filter((c) => c.current_stage === "hired").length,
+    };
+  }, [candidates]);
+
+  return (
+    <Card className="dark:bg-gray-800/50 dark:border-gray-700 overflow-hidden">
+      <CardHeader
+        className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <Briefcase className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <CardTitle className="text-lg dark:text-gray-100">
+                {job.title}
+              </CardTitle>
+              <CardDescription className="flex items-center gap-2 mt-0.5">
+                {job.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {job.location}
+                  </span>
+                )}
+                <span className="flex items-center gap-1">
+                  <Users className="w-3 h-3" />
+                  {stats.total} candidates
+                </span>
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="hidden sm:flex items-center gap-3 text-sm">
+              <div className="text-center px-3 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <div className="font-semibold text-blue-600 dark:text-blue-400">
+                  {stats.avgScore}%
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Avg Score
+                </div>
+              </div>
+              <div className="text-center px-3 py-1 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg">
+                <div className="font-semibold text-yellow-600 dark:text-yellow-400">
+                  {stats.inProgress}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  In Progress
+                </div>
+              </div>
+              <div className="text-center px-3 py-1 bg-green-50 dark:bg-green-900/30 rounded-lg">
+                <div className="font-semibold text-green-600 dark:text-green-400">
+                  {stats.hired}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">
+                  Hired
+                </div>
+              </div>
+            </div>
+            <ChevronRight
+              className={`w-5 h-5 text-gray-400 transition-transform ${
+                expanded ? "rotate-90" : ""
+              }`}
+            />
+          </div>
+        </div>
+      </CardHeader>
+      {expanded && (
+        <CardContent className="pt-0">
+          {candidates.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+              <Users className="w-10 h-10 mx-auto mb-2 opacity-50" />
+              <p>No candidates for this position yet</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {candidates.map((candidate) => (
+                <CandidateCard
+                  key={candidate.id}
+                  candidate={candidate}
+                  jobTitle={job.title}
+                  onClick={() => onCandidateClick(candidate.id)}
+                  isSelected={selectedIds?.includes(candidate.id)}
+                  onSelect={onSelect}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
 
 export default function AllCandidatesPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [candidates, setCandidates] = useState([]);
-  const [filteredCandidates, setFilteredCandidates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [jobFilter, setJobFilter] = useState("all");
   const [jobs, setJobs] = useState([]);
-  const [selectedCandidate, setSelectedCandidate] = useState(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedCandidates, setSelectedCandidates] = useState([]);
-  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+  const [selectedJob, setSelectedJob] = useState("all");
+  const [selectedStage, setSelectedStage] = useState("all");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [searchFilters, setSearchFilters] = useState({});
 
   useEffect(() => {
-    // Check authorization
     if (
       session &&
       session.user.role !== "hr" &&
@@ -72,29 +330,23 @@ export default function AllCandidatesPage() {
     }
 
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
-
-  useEffect(() => {
-    filterCandidates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, jobFilter, candidates]);
+  }, [session, router]);
 
   const fetchData = async () => {
     try {
-      // Fetch all jobs
-      const jobsResponse = await fetch("/api/jobs");
+      const [jobsResponse, candidatesResponse] = await Promise.all([
+        fetch("/api/jobs"),
+        fetch("/api/applications"),
+      ]);
+
       const jobsData = await jobsResponse.json();
+      const candidatesData = await candidatesResponse.json();
+
       if (jobsResponse.ok) {
         setJobs(jobsData);
       }
 
-      // Fetch all candidates/applications
-      const candidatesResponse = await fetch("/api/applications");
-      const candidatesData = await candidatesResponse.json();
-
       if (candidatesResponse.ok) {
-        // Sort by match score descending and created date
         const sorted = candidatesData.sort(
           (a, b) =>
             (b.resume_match_score || 0) - (a.resume_match_score || 0) ||
@@ -110,132 +362,152 @@ export default function AllCandidatesPage() {
     }
   };
 
-  const filterCandidates = () => {
+  // Group candidates by job
+  const groupedCandidates = useMemo(() => {
     let filtered = [...candidates];
 
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((c) => c.status === statusFilter);
+    // Apply search filters
+    if (searchFilters.search) {
+      const searchLower = searchFilters.search.toLowerCase();
+      filtered = filtered.filter(
+        (c) =>
+          c.name?.toLowerCase().includes(searchLower) ||
+          c.email?.toLowerCase().includes(searchLower) ||
+          c.skills?.some((s) => s.toLowerCase().includes(searchLower))
+      );
     }
 
-    if (jobFilter !== "all") {
-      filtered = filtered.filter((c) => c.job_id === jobFilter);
+    if (searchFilters.jobId) {
+      filtered = filtered.filter((c) => c.job_id === searchFilters.jobId);
     }
 
-    setFilteredCandidates(filtered);
-  };
+    if (searchFilters.status) {
+      filtered = filtered.filter((c) => c.status === searchFilters.status);
+    }
 
-  const updateCandidateStatus = async (candidateId, newStatus) => {
-    try {
-      const response = await fetch(`/api/applications/${candidateId}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
+    if (searchFilters.stage) {
+      filtered = filtered.filter((c) => c.current_stage === searchFilters.stage);
+    }
 
-      if (!response.ok) {
-        throw new Error("Failed to update status");
-      }
+    if (searchFilters.minScore > 0) {
+      filtered = filtered.filter(
+        (c) => (c.resume_match_score || 0) >= searchFilters.minScore
+      );
+    }
 
-      // Update local state
-      setCandidates((prev) =>
-        prev.map((c) =>
-          c.id === candidateId ? { ...c, status: newStatus } : c
+    if (searchFilters.maxScore < 100) {
+      filtered = filtered.filter(
+        (c) => (c.resume_match_score || 0) <= searchFilters.maxScore
+      );
+    }
+
+    if (searchFilters.skills?.length > 0) {
+      filtered = filtered.filter((c) =>
+        searchFilters.skills.every((skill) =>
+          c.skills?.some((s) => s.toLowerCase().includes(skill.toLowerCase()))
         )
       );
-
-      toast.success(`Candidate ${newStatus}`);
-      setDialogOpen(false);
-    } catch (error) {
-      console.error("Error updating status:", error);
-      toast.error("Failed to update candidate status");
-    }
-  };
-
-  const toggleCandidateSelection = (candidateId) => {
-    setSelectedCandidates((prev) =>
-      prev.includes(candidateId)
-        ? prev.filter((id) => id !== candidateId)
-        : [...prev, candidateId]
-    );
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedCandidates.length === filteredCandidates.length) {
-      setSelectedCandidates([]);
-    } else {
-      setSelectedCandidates(filteredCandidates.map((c) => c.id));
-    }
-  };
-
-  const handleBulkAction = async (action) => {
-    if (selectedCandidates.length === 0) {
-      toast.error("Please select at least one candidate");
-      return;
     }
 
-    const actionLabel = action === "shortlisted" ? "shortlist" : "reject";
-    const confirmMessage = `Are you sure you want to ${actionLabel} ${selectedCandidates.length} candidate(s)?`;
-    if (!window.confirm(confirmMessage)) {
-      return;
+    // Filter by stage if selected (from quick filter)
+    if (selectedStage !== "all") {
+      filtered = filtered.filter((c) => c.current_stage === selectedStage);
     }
 
-    setBulkActionLoading(true);
-    try {
-      const promises = selectedCandidates.map((candidateId) =>
-        fetch(`/api/applications/${candidateId}/status`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: action }),
-        })
-      );
-
-      const results = await Promise.all(promises);
-      const failed = results.filter((r) => !r.ok);
-
-      if (failed.length > 0) {
-        toast.error(`Failed to update ${failed.length} candidate(s)`);
-      } else {
-        // Update local state
-        setCandidates((prev) =>
-          prev.map((c) =>
-            selectedCandidates.includes(c.id) ? { ...c, status: action } : c
-          )
-        );
-        toast.success(
-          `Successfully ${actionLabel}ed ${selectedCandidates.length} candidate(s)`
-        );
-        setSelectedCandidates([]);
+    // Group by job
+    const groups = {};
+    filtered.forEach((candidate) => {
+      const jobId = candidate.job_id;
+      if (!groups[jobId]) {
+        groups[jobId] = [];
       }
-    } catch (error) {
-      console.error("Error updating candidates:", error);
-      toast.error("Failed to update selected candidates");
-    } finally {
-      setBulkActionLoading(false);
+      groups[jobId].push(candidate);
+    });
+
+    return groups;
+  }, [candidates, selectedStage, searchFilters]);
+
+  // Filter jobs based on selection
+  const filteredJobs = useMemo(() => {
+    if (selectedJob === "all") {
+      return jobs.filter((job) => groupedCandidates[job.id]?.length > 0);
     }
-  };
+    return jobs.filter((job) => job.id === selectedJob);
+  }, [jobs, selectedJob, groupedCandidates]);
 
-  const getScoreColor = (score) => {
-    if (score >= 80) return "text-green-600 bg-green-50";
-    if (score >= 60) return "text-blue-600 bg-blue-50";
-    if (score >= 40) return "text-yellow-600 bg-yellow-50";
-    return "text-red-600 bg-red-50";
-  };
-
-  const getStatusBadge = (status) => {
-    const variants = {
-      submitted: { variant: "secondary", label: "Submitted" },
-      shortlisted: { variant: "default", label: "Shortlisted" },
-      rejected: { variant: "destructive", label: "Rejected" },
-      interviewing: { variant: "default", label: "Interviewing" },
-      offered: { variant: "default", label: "Offered" },
+  // Overall stats
+  const stats = useMemo(() => {
+    return {
+      total: candidates.length,
+      screening: candidates.filter((c) => c.current_stage === "resume_screening").length,
+      testing: candidates.filter((c) => c.current_stage === "mcq_test").length,
+      interviewing: candidates.filter(
+        (c) => ["async_interview", "live_interview"].includes(c.current_stage)
+      ).length,
+      offered: candidates.filter((c) => c.current_stage === "offer").length,
+      hired: candidates.filter((c) => c.current_stage === "hired").length,
     };
-    return variants[status] || { variant: "secondary", label: status };
+  }, [candidates]);
+
+  const handleCandidateClick = (candidateId) => {
+    router.push(`/admin/candidates/${candidateId}`);
   };
 
-  const getJobTitle = (jobId) => {
-    const job = jobs.find((j) => j.id === jobId);
-    return job ? job.title : "Unknown Job";
-  };
+  const handleSelect = useCallback((candidateId, checked) => {
+    setSelectedIds((prev) =>
+      checked
+        ? [...prev, candidateId]
+        : prev.filter((id) => id !== candidateId)
+    );
+  }, []);
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedIds([]);
+  }, []);
+
+  const handleSearch = useCallback((filters) => {
+    setSearchFilters(filters);
+    // Clear selection when filters change
+    setSelectedIds([]);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-5 w-72 mt-2" />
+        </div>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-10 w-24 rounded-full" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <Card key={i} className="dark:bg-gray-800">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="w-12 h-12 rounded-xl" />
+                  <div>
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-32 mt-1" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[1, 2, 3].map((j) => (
+                    <Skeleton key={j} className="h-32 rounded-xl" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -245,167 +517,224 @@ export default function AllCandidatesPage() {
           All Candidates
         </h1>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          View and manage all applications across all jobs
+          View and manage all applications grouped by job positions
         </p>
       </div>
 
-      {/* Filters and Bulk Actions */}
-      <div className="flex items-center justify-between">
-        <div className="flex gap-3">
-          <Select
-            value={jobFilter}
-            onValueChange={setJobFilter}
-            disabled={loading}
-          >
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Filter by job" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Jobs</SelectItem>
-              {jobs.map((job) => (
-                <SelectItem key={job.id} value={job.id}>
-                  {job.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Advanced Search */}
+      <AdvancedSearch
+        onSearch={handleSearch}
+        jobs={jobs}
+        initialFilters={searchFilters}
+      />
 
-          <Select
-            value={statusFilter}
-            onValueChange={setStatusFilter}
-            disabled={loading}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="shortlisted">Shortlisted</SelectItem>
-              <SelectItem value="interviewing">Interviewing</SelectItem>
-              <SelectItem value="rejected">Rejected</SelectItem>
-              <SelectItem value="offered">Offered</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Bulk Operations */}
+      {selectedIds.length > 0 && (
+        <BulkOperations
+          selectedIds={selectedIds}
+          onClearSelection={handleClearSelection}
+          onActionComplete={fetchData}
+          candidates={candidates.filter((c) => selectedIds.includes(c.id))}
+        />
+      )}
 
-        <div className="flex gap-2">
-          {selectedCandidates.length > 0 && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedCandidates([])}
-                disabled={bulkActionLoading}
-              >
-                <X className="mr-2 h-4 w-4" />
-                Clear ({selectedCandidates.length})
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => handleBulkAction("shortlisted")}
-                disabled={bulkActionLoading}
-              >
-                {bulkActionLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                )}
-                Shortlist Selected
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleBulkAction("rejected")}
-                disabled={bulkActionLoading}
-              >
-                {bulkActionLoading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <XCircle className="mr-2 h-4 w-4" />
-                )}
-                Reject Selected
-              </Button>
-            </>
-          )}
-        </div>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
+                <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold dark:text-gray-100">{stats.total}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg">
+                <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{stats.screening}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Screening</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/50 rounded-lg">
+                <ClipboardList className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{stats.testing}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Testing</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                <Mic className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.interviewing}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Interview</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                <Star className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.offered}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Offered</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                <UserCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.hired}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Hired</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Total Applications
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold dark:text-gray-100">
+      {/* Job Filter Chips */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Filter by Job Position
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedJob("all")}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              selectedJob === "all"
+                ? "bg-blue-600 text-white shadow-md"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            All Positions
+            <Badge
+              variant="secondary"
+              className={`ml-2 ${
+                selectedJob === "all"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 dark:bg-gray-700"
+              }`}
+            >
               {candidates.length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Shortlisted
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-              {candidates.filter((c) => c.status === "shortlisted").length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Interviewing
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {candidates.filter((c) => c.status === "interviewing").length}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="dark:bg-gray-800 dark:border-gray-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
-              Offered
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-              {candidates.filter((c) => c.status === "offered").length}
-            </p>
-          </CardContent>
-        </Card>
+            </Badge>
+          </button>
+          {jobs.map((job) => {
+            const count = candidates.filter((c) => c.job_id === job.id).length;
+            if (count === 0) return null;
+            return (
+              <button
+                key={job.id}
+                onClick={() => setSelectedJob(job.id)}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                  selectedJob === job.id
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                {job.title}
+                <Badge
+                  variant="secondary"
+                  className={`ml-2 ${
+                    selectedJob === job.id
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-200 dark:bg-gray-700"
+                  }`}
+                >
+                  {count}
+                </Badge>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Candidates List */}
-      {loading ? (
-        <div className="grid gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="dark:bg-gray-800 dark:border-gray-700">
-              <CardHeader>
-                <div className="flex items-start gap-4">
-                  <Skeleton className="w-8 h-8 rounded-full" />
-                  <div className="space-y-3 flex-1">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-6 w-48" />
-                      <Skeleton className="h-5 w-20" />
-                    </div>
-                    <Skeleton className="h-4 w-64" />
-                  </div>
-                  <Skeleton className="h-16 w-24 rounded-lg" />
-                </div>
-              </CardHeader>
-            </Card>
-          ))}
+      {/* Stage Filter Chips */}
+      <div className="space-y-3">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          Filter by Stage
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedStage("all")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              selectedStage === "all"
+                ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            All Stages
+          </button>
+          {PIPELINE_STAGES.map((stage) => {
+            const Icon = stage.icon;
+            return (
+              <button
+                key={stage.key}
+                onClick={() => setSelectedStage(stage.key)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  selectedStage === stage.key
+                    ? "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+                }`}
+              >
+                <Icon className="w-3 h-3" />
+                {stage.label}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setSelectedStage("hired")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+              selectedStage === "hired"
+                ? "bg-green-600 text-white"
+                : "bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50"
+            }`}
+          >
+            <UserCheck className="w-3 h-3" />
+            Hired
+          </button>
+          <button
+            onClick={() => setSelectedStage("rejected")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+              selectedStage === "rejected"
+                ? "bg-red-600 text-white"
+                : "bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50"
+            }`}
+          >
+            Rejected
+          </button>
         </div>
-      ) : filteredCandidates.length === 0 ? (
+      </div>
+
+      {/* Candidates by Job Category */}
+      {filteredJobs.length === 0 ? (
         <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardContent className="text-center py-16">
             <Users className="mx-auto h-16 w-16 mb-4 text-gray-400 dark:text-gray-500" />
@@ -413,363 +742,26 @@ export default function AllCandidatesPage() {
               No candidates found
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              {statusFilter === "all" && jobFilter === "all"
+              {selectedJob === "all" && selectedStage === "all"
                 ? "No applications received yet"
                 : "No candidates match the current filters"}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {/* Select All */}
-          {filteredCandidates.length > 1 && (
-            <div className="flex items-center gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border dark:border-gray-700">
-              <Checkbox
-                id="select-all-candidates"
-                checked={
-                  selectedCandidates.length === filteredCandidates.length
-                }
-                onCheckedChange={toggleSelectAll}
-              />
-              <label
-                htmlFor="select-all-candidates"
-                className="text-sm font-medium cursor-pointer dark:text-gray-300"
-              >
-                Select all {filteredCandidates.length} candidates
-              </label>
-            </div>
-          )}
-
-          {/* Candidates List */}
-          <div className="grid gap-4">
-            {filteredCandidates.map((candidate, index) => {
-              const statusInfo = getStatusBadge(candidate.status);
-              return (
-                <Card
-                  key={candidate.id}
-                  className={`hover:shadow-md transition-shadow dark:bg-gray-800 dark:border-gray-700 ${
-                    selectedCandidates.includes(candidate.id)
-                      ? "ring-2 ring-blue-500"
-                      : ""
-                  }`}
-                >
-                  <CardHeader>
-                    <div className="flex items-start gap-4">
-                      <Checkbox
-                        checked={selectedCandidates.includes(candidate.id)}
-                        onCheckedChange={() =>
-                          toggleCandidateSelection(candidate.id)
-                        }
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1"
-                      />
-                      <div
-                        className="flex items-start justify-between flex-1 cursor-pointer"
-                        onClick={() => {
-                          setSelectedCandidate(candidate);
-                          setDialogOpen(true);
-                        }}
-                      >
-                        <div className="space-y-2 flex-1">
-                          <div className="flex items-center gap-3">
-                            <CardTitle className="text-xl dark:text-gray-100">
-                              {candidate.name}
-                            </CardTitle>
-                            <Badge variant={statusInfo.variant}>
-                              {statusInfo.label}
-                            </Badge>
-                          </div>
-                          <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
-                            <span className="flex items-center font-medium text-blue-600 dark:text-blue-400">
-                              <Briefcase className="h-4 w-4 mr-1" />
-                              {getJobTitle(candidate.job_id)}
-                            </span>
-                            <span className="flex items-center">
-                              <Mail className="h-4 w-4 mr-1" />
-                              {candidate.email}
-                            </span>
-                            <span className="flex items-center">
-                              <Phone className="h-4 w-4 mr-1" />
-                              {candidate.phone}
-                            </span>
-                            {candidate.experience && (
-                              <span className="flex items-center">
-                                <GraduationCap className="h-4 w-4 mr-1" />
-                                {candidate.experience} years exp.
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="ml-4 text-right">
-                          <div
-                            className={`text-3xl font-bold px-4 py-2 rounded-lg ${getScoreColor(
-                              candidate.resume_match_score || 0
-                            )}`}
-                          >
-                            {Math.round(candidate.resume_match_score || 0)}%
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Match Score
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between ml-10">
-                      <div className="flex flex-wrap gap-2">
-                        {candidate.skills && candidate.skills.length > 0 ? (
-                          <>
-                            {candidate.skills.slice(0, 4).map((skill, idx) => (
-                              <Badge
-                                key={idx}
-                                variant="outline"
-                                className="dark:border-gray-600 dark:text-gray-300"
-                              >
-                                {skill}
-                              </Badge>
-                            ))}
-                            {candidate.skills.length > 4 && (
-                              <Badge
-                                variant="outline"
-                                className="dark:border-gray-600 dark:text-gray-300"
-                              >
-                                +{candidate.skills.length - 4} more
-                              </Badge>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            No skills listed
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Applied{" "}
-                        {new Date(candidate.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+        <div className="space-y-6">
+          {filteredJobs.map((job) => (
+            <JobCategorySection
+              key={job.id}
+              job={job}
+              candidates={groupedCandidates[job.id] || []}
+              onCandidateClick={handleCandidateClick}
+              selectedIds={selectedIds}
+              onSelect={handleSelect}
+            />
+          ))}
         </div>
       )}
-
-      {/* Candidate Detail Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
-          <DialogHeader>
-            <DialogTitle className="dark:text-gray-100">
-              Candidate Details
-            </DialogTitle>
-            <DialogDescription className="dark:text-gray-400">
-              Review candidate information and update status
-            </DialogDescription>
-          </DialogHeader>
-
-          {selectedCandidate && (
-            <>
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-2xl font-bold dark:text-gray-100">
-                      {selectedCandidate.name}
-                    </h3>
-                    <p className="text-gray-600 dark:text-gray-400 mt-1">
-                      Applied for: {getJobTitle(selectedCandidate.job_id)}
-                    </p>
-                  </div>
-                  <div
-                    className={`text-4xl font-bold px-6 py-3 rounded-lg ${getScoreColor(
-                      selectedCandidate.resume_match_score || 0
-                    )}`}
-                  >
-                    {Math.round(selectedCandidate.resume_match_score || 0)}%
-                  </div>
-                </div>
-
-                <Separator className="dark:bg-gray-700" />
-
-                {/* Contact Info */}
-                <div>
-                  <h4 className="font-semibold mb-3 dark:text-gray-100">
-                    Contact Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      <span className="dark:text-gray-300">
-                        {selectedCandidate.email}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                      <span className="dark:text-gray-300">
-                        {selectedCandidate.phone}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Professional Info */}
-                {(selectedCandidate.experience ||
-                  selectedCandidate.current_company ||
-                  selectedCandidate.education) && (
-                  <>
-                    <Separator className="dark:bg-gray-700" />
-                    <div>
-                      <h4 className="font-semibold mb-3 dark:text-gray-100">
-                        Professional Information
-                      </h4>
-                      <div className="space-y-2 text-sm">
-                        {selectedCandidate.experience && (
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                            <span className="dark:text-gray-300">
-                              {selectedCandidate.experience} years of experience
-                            </span>
-                          </div>
-                        )}
-                        {selectedCandidate.current_company && (
-                          <div className="flex items-center gap-2">
-                            <Briefcase className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                            <span className="dark:text-gray-300">
-                              Currently at: {selectedCandidate.current_company}
-                            </span>
-                          </div>
-                        )}
-                        {selectedCandidate.education && (
-                          <div className="flex items-center gap-2">
-                            <GraduationCap className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-                            <span className="dark:text-gray-300">
-                              {selectedCandidate.education}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Skills */}
-                {selectedCandidate.skills &&
-                  selectedCandidate.skills.length > 0 && (
-                    <>
-                      <Separator className="dark:bg-gray-700" />
-                      <div>
-                        <h4 className="font-semibold mb-3 dark:text-gray-100">
-                          Skills
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedCandidate.skills.map((skill, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="secondary"
-                              className="dark:bg-gray-700 dark:text-gray-300"
-                            >
-                              {skill}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                {/* Cover Letter */}
-                {selectedCandidate.cover_letter && (
-                  <>
-                    <Separator className="dark:bg-gray-700" />
-                    <div>
-                      <h4 className="font-semibold mb-3 dark:text-gray-100">
-                        Cover Letter
-                      </h4>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                        {selectedCandidate.cover_letter}
-                      </p>
-                    </div>
-                  </>
-                )}
-
-                {/* Resume */}
-                {selectedCandidate.resume_url && (
-                  <>
-                    <Separator className="dark:bg-gray-700" />
-                    <div>
-                      <h4 className="font-semibold mb-3 dark:text-gray-100">
-                        Resume
-                      </h4>
-                      <Button variant="outline" size="sm" asChild>
-                        <a
-                          href={selectedCandidate.resume_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <FileText className="mr-2 h-4 w-4" />
-                          View Resume
-                        </a>
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-                {/* Actions */}
-                <Separator className="dark:bg-gray-700" />
-                <div>
-                  <h4 className="font-semibold mb-3 dark:text-gray-100">
-                    Update Status
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCandidate.status !== "shortlisted" && (
-                      <Button
-                        variant="default"
-                        onClick={() =>
-                          updateCandidateStatus(
-                            selectedCandidate.id,
-                            "shortlisted"
-                          )
-                        }
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Shortlist
-                      </Button>
-                    )}
-                    {selectedCandidate.status !== "interviewing" && (
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          updateCandidateStatus(
-                            selectedCandidate.id,
-                            "interviewing"
-                          )
-                        }
-                      >
-                        Schedule Interview
-                      </Button>
-                    )}
-                    {selectedCandidate.status !== "rejected" && (
-                      <Button
-                        variant="destructive"
-                        onClick={() =>
-                          updateCandidateStatus(
-                            selectedCandidate.id,
-                            "rejected"
-                          )
-                        }
-                      >
-                        <X className="mr-2 h-4 w-4" />
-                        Reject
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

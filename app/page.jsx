@@ -28,7 +28,7 @@ export default function Home() {
               </Link>
               <ModeToggle />
               <Link
-                href="/auth/signup"
+                href="/jobs"
                 className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700"
               >
                 Get Started
@@ -150,9 +150,9 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="mt-24 bg-white border-t border-gray-200">
+      <footer className="mt-24 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-center text-gray-500 text-sm">
+          <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
             © 2025 AI-HRMS. Built by Sahil Tiwari. All rights reserved.
           </p>
         </div>

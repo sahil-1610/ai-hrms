@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { generateEmbedding, matchResumeToJob } from "@/lib/openai";
-import { calculateMatchScore } from "@/utils/scoring";
 import { uploadToCloudinary } from "@/lib/cloudinary";
-import { extractResumeText } from "@/lib/resumeParser";
 import { sendEmail } from "@/lib/email";
 import { applicationSubmittedTemplate } from "@/lib/emailTemplates";
 
 // POST /api/jobs/[id]/apply - Submit job application (NO AUTH REQUIRED)
 // Candidates don't need accounts - they submit with their info
+// Resume is uploaded to Cloudinary only - parsing/analysis happens later on admin dashboard
 export async function POST(request, { params }) {
   try {
     const { id: jobId } = await params;
@@ -16,7 +14,7 @@ export async function POST(request, { params }) {
     // Check if job exists and is active
     const { data: job, error: jobError } = await supabaseAdmin
       .from("jobs")
-      .select("*")
+      .select("id, title, status")
       .eq("id", jobId)
       .single();
 
@@ -108,7 +106,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Extract resume text for embedding and AI analysis
+    // Convert file to buffer for upload
     const bytes = await resumeFile.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -132,63 +130,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Extract text from PDF/DOCX
-    let resumeText;
-    try {
-      resumeText = await extractResumeText(buffer, resumeFile.type);
-    } catch (extractError) {
-      console.error("Error extracting text from resume:", extractError);
-      // Fall back to basic info if text extraction fails
-      resumeText = `
-        Candidate: ${name}
-        Email: ${email}
-        Phone: ${phone}
-        Current Company: ${currentCompany || "N/A"}
-        Experience: ${experience || "N/A"} years
-        Skills: ${skills || "N/A"}
-        Education: ${education || "N/A"}
-        Cover Letter: ${coverLetter || "N/A"}
-      `.trim();
-    }
-
-    // Generate resume embedding for vector search
-    const resumeEmbedding = await generateEmbedding(resumeText);
-
-    // Calculate cosine similarity match score (0-100)
-    const cosineSimilarityScore = job.jd_embedding
-      ? calculateMatchScore(resumeEmbedding, job.jd_embedding)
-      : 0;
-
-    // Use AI to intelligently match resume against job description
-    let aiMatchAnalysis;
-    let finalMatchScore = cosineSimilarityScore; // Default to cosine similarity
-
-    try {
-      aiMatchAnalysis = await matchResumeToJob(resumeText, job.description, {
-        title: job.title,
-        skills: job.required_skills || [],
-        minExp: job.min_experience || 0,
-        maxExp: job.max_experience || 5,
-        location: job.location,
-      });
-
-      // Use AI match score as primary score (more intelligent than just embeddings)
-      finalMatchScore = aiMatchAnalysis.matchScore;
-
-      console.log("AI Match Analysis:", {
-        aiScore: aiMatchAnalysis.matchScore,
-        cosineScore: cosineSimilarityScore,
-        recommendation: aiMatchAnalysis.recommendation,
-      });
-    } catch (aiError) {
-      console.error(
-        "AI matching failed, falling back to embedding score:",
-        aiError
-      );
-      // If AI matching fails, use cosine similarity score
-      aiMatchAnalysis = null;
-    }
-
     // Parse skills array
     const skillsArray = skills
       ? skills
@@ -197,7 +138,7 @@ export async function POST(request, { params }) {
           .filter(Boolean)
       : [];
 
-    // Create application with auto-generated application_token
+    // Create application - resume parsing and AI analysis will be done later by admin
     const { data: application, error: appError } = await supabaseAdmin
       .from("applications")
       .insert({
@@ -211,24 +152,9 @@ export async function POST(request, { params }) {
         education,
         cover_letter: coverLetter,
         resume_url: resumeUrl,
-        resume_text: resumeText,
-        resume_embedding: resumeEmbedding,
-        resume_match_score: finalMatchScore, // AI-enhanced match score
-        overall_score: finalMatchScore, // Initial score is just resume match
+        // resume_text, resume_embedding, resume_match_score will be set when admin analyzes
         status: "submitted",
-        // Store AI analysis if available
-        ai_match_data: aiMatchAnalysis
-          ? JSON.stringify({
-              recommendation: aiMatchAnalysis.recommendation,
-              strengths: aiMatchAnalysis.strengths,
-              concerns: aiMatchAnalysis.concerns,
-              skillsMatch: aiMatchAnalysis.skillsMatch,
-              experienceMatch: aiMatchAnalysis.experienceMatch,
-              summary: aiMatchAnalysis.summary,
-              aiScore: aiMatchAnalysis.matchScore,
-              cosineScore: cosineSimilarityScore,
-            })
-          : null,
+        current_stage: "resume_screening",
         // application_token is auto-generated by database
       })
       .select()
@@ -267,14 +193,6 @@ export async function POST(request, { params }) {
           "Application submitted successfully! We'll contact you via email.",
         application: {
           id: application.id,
-          matchScore: finalMatchScore,
-          aiAnalysis: aiMatchAnalysis
-            ? {
-                recommendation: aiMatchAnalysis.recommendation,
-                strengths: aiMatchAnalysis.strengths.slice(0, 3), // Top 3 strengths
-                concerns: aiMatchAnalysis.concerns.slice(0, 2), // Top 2 concerns
-              }
-            : null,
           email: application.email,
           token: application.application_token,
           jobTitle: job.title,

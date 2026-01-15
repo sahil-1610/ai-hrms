@@ -14,7 +14,7 @@ export async function GET(request) {
     if (testToken) {
       const { data: application, error } = await supabaseAdmin
         .from("applications")
-        .select("*, jobs(id, title, location, company, description)")
+        .select("*, jobs(id, title, location, skills, jd_text)")
         .eq("test_token", testToken)
         .single();
 
@@ -27,6 +27,38 @@ export async function GET(request) {
 
       return NextResponse.json(application);
     }
+
+    // If interview token is provided, allow public access for interview
+    const interviewToken = searchParams.get("interview_token");
+    if (interviewToken) {
+      console.log("Looking up interview token:", interviewToken);
+
+      const { data: application, error } = await supabaseAdmin
+        .from("applications")
+        .select("*, jobs(id, title, location, skills, jd_text)")
+        .eq("interview_token", interviewToken)
+        .single();
+
+      if (error) {
+        console.error("Supabase error for interview token lookup:", error);
+        return NextResponse.json(
+          { error: "Invalid interview link", details: error.message },
+          { status: 404 }
+        );
+      }
+
+      if (!application) {
+        console.error("No application found for interview token:", interviewToken);
+        return NextResponse.json(
+          { error: "Invalid interview link" },
+          { status: 404 }
+        );
+      }
+
+      console.log("Found application for interview:", application.id, application.name);
+      return NextResponse.json(application);
+    }
+
 
     // If application token is provided, allow public access for candidate status tracking
     if (token) {

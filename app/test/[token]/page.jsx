@@ -11,8 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   Loader2,
@@ -313,74 +311,102 @@ export default function TestPage() {
 
   // Test in progress
   const question = test.questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / test.questions.length) * 100;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4">
         {/* Header with timer and progress */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="mb-6 bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="flex items-center justify-between p-4">
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">
+              <h1 className="text-xl font-bold text-gray-900">
                 {application?.jobs?.title || "Technical Assessment"}
               </h1>
-              <p className="text-sm text-gray-600">
-                Question {currentQuestion + 1} of {test.questions.length}
+              <p className="text-sm text-gray-500 mt-1">
+                Answer all questions to complete the test
               </p>
             </div>
-            <div className="flex items-center gap-2 text-lg font-semibold">
+            <div className={`
+              flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xl font-bold
+              ${timeRemaining < 300
+                ? "bg-red-100 text-red-700 animate-pulse"
+                : timeRemaining < 600
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-green-100 text-green-700"
+              }
+            `}>
               <Clock className="h-5 w-5" />
-              <span
-                className={
-                  timeRemaining < 300 ? "text-red-600" : "text-gray-900"
-                }
-              >
-                {formatTime(timeRemaining)}
-              </span>
+              <span>{formatTime(timeRemaining)}</span>
             </div>
           </div>
-          <Progress value={progress} className="h-2" />
-          <p className="text-xs text-gray-500 mt-2">
-            {getAnsweredCount()} of {test.questions.length} questions answered
-          </p>
+          <div className="px-4 pb-4">
+            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+              <span>Progress</span>
+              <span className="font-medium">{getAnsweredCount()} of {test.questions.length} answered</span>
+            </div>
+            <Progress value={(getAnsweredCount() / test.questions.length) * 100} className="h-2" />
+          </div>
         </div>
 
         {/* Question Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">
-              Question {currentQuestion + 1}
-            </CardTitle>
-            <CardDescription className="text-base text-gray-700 mt-2">
-              {question.q}
-            </CardDescription>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg border-b">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full font-bold text-lg">
+                {currentQuestion + 1}
+              </span>
+              <div>
+                <CardTitle className="text-lg text-gray-900">
+                  Question {currentQuestion + 1} of {test.questions.length}
+                </CardTitle>
+                {question.category && (
+                  <span className="text-xs text-blue-600 font-medium uppercase tracking-wide">
+                    {question.category} • {question.difficulty || "Medium"}
+                  </span>
+                )}
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <RadioGroup
-              value={answers[currentQuestion]?.toString()}
-              onValueChange={(value) =>
-                handleAnswerSelect(currentQuestion, parseInt(value))
-              }
-            >
-              {question.options.map((option, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-3 p-4 rounded-lg border hover:bg-gray-50 cursor-pointer"
-                >
-                  <RadioGroupItem
-                    value={index.toString()}
-                    id={`option-${index}`}
-                  />
-                  <Label
-                    htmlFor={`option-${index}`}
-                    className="flex-1 cursor-pointer"
+          <CardContent className="pt-6">
+            <p className="text-lg text-gray-800 font-medium mb-6 leading-relaxed">
+              {question.q}
+            </p>
+            <div className="space-y-3">
+              {question.options.map((option, index) => {
+                const isSelected = answers[currentQuestion] === index;
+                return (
+                  <button
+                    key={`q${currentQuestion}-opt${index}`}
+                    type="button"
+                    onClick={() => handleAnswerSelect(currentQuestion, index)}
+                    className={`
+                      w-full text-left p-4 rounded-xl border-2 transition-all duration-200
+                      flex items-center gap-4 group
+                      ${isSelected
+                        ? "border-blue-500 bg-blue-50 shadow-md"
+                        : "border-gray-200 hover:border-blue-300 hover:bg-gray-50"
+                      }
+                    `}
                   >
-                    {option}
-                  </Label>
-                </div>
-              ))}
-            </RadioGroup>
+                    <span className={`
+                      flex items-center justify-center w-8 h-8 rounded-full border-2 font-semibold text-sm transition-all
+                      ${isSelected
+                        ? "border-blue-500 bg-blue-500 text-white"
+                        : "border-gray-300 text-gray-500 group-hover:border-blue-400"
+                      }
+                    `}>
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span className={`flex-1 ${isSelected ? "text-blue-900 font-medium" : "text-gray-700"}`}>
+                      {option}
+                    </span>
+                    {isSelected && (
+                      <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
@@ -390,17 +416,18 @@ export default function TestPage() {
             variant="outline"
             onClick={handlePrevious}
             disabled={currentQuestion === 0}
+            className="px-6"
           >
-            Previous
+            ← Previous
           </Button>
 
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             {currentQuestion === test.questions.length - 1 ? (
               <Button
                 onClick={handleSubmit}
                 disabled={submitting}
                 size="lg"
-                className="min-w-[120px]"
+                className="min-w-[140px] bg-green-600 hover:bg-green-700"
               >
                 {submitting ? (
                   <>
@@ -408,39 +435,58 @@ export default function TestPage() {
                     Submitting...
                   </>
                 ) : (
-                  "Submit Test"
+                  <>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Submit Test
+                  </>
                 )}
               </Button>
             ) : (
-              <Button onClick={handleNext}>Next</Button>
+              <Button onClick={handleNext} className="px-6">
+                Next →
+              </Button>
             )}
           </div>
         </div>
 
         {/* Question navigator */}
-        <div className="mt-6 bg-white rounded-lg shadow-sm p-4">
-          <p className="text-sm font-medium text-gray-700 mb-3">
+        <div className="mt-6 bg-white rounded-xl shadow-sm border p-4">
+          <p className="text-sm font-semibold text-gray-700 mb-3">
             Question Navigator
           </p>
-          <div className="grid grid-cols-10 gap-2">
+          <div className="flex flex-wrap gap-2">
             {test.questions.map((_, index) => (
               <button
                 key={index}
                 onClick={() => setCurrentQuestion(index)}
                 className={`
-                  w-10 h-10 rounded-md border text-sm font-medium transition-colors
+                  w-10 h-10 rounded-lg border-2 text-sm font-semibold transition-all
                   ${
                     currentQuestion === index
-                      ? "bg-blue-600 text-white border-blue-600"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md scale-110"
                       : answers[index] !== null
-                      ? "bg-green-100 text-green-700 border-green-300"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                      ? "bg-green-100 text-green-700 border-green-400 hover:bg-green-200"
+                      : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 hover:border-gray-300"
                   }
                 `}
               >
                 {index + 1}
               </button>
             ))}
+          </div>
+          <div className="flex items-center gap-4 mt-4 pt-4 border-t text-xs text-gray-500">
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-4 bg-green-100 border-2 border-green-400 rounded"></span>
+              <span>Answered</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-4 bg-gray-50 border-2 border-gray-200 rounded"></span>
+              <span>Not answered</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-4 h-4 bg-blue-600 border-2 border-blue-600 rounded"></span>
+              <span>Current</span>
+            </div>
           </div>
         </div>
       </div>

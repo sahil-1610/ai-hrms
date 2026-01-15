@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
+import { checkAndAutoAdvance, calculateOverallScore } from "@/lib/pipeline";
 
 // POST /api/tests/submit - Submit test answers (Public - no auth required, uses token)
 export async function POST(request) {
@@ -95,6 +96,7 @@ export async function POST(request) {
       .from("applications")
       .update({
         test_score: testScore,
+        mcq_score: testScore, // Also store as mcq_score for pipeline
         overall_score: overallScore,
         test_submitted_at: new Date().toISOString(),
       })
@@ -108,6 +110,16 @@ export async function POST(request) {
       );
     }
 
+    // Check for auto-advancement
+    let autoAdvanceResult = { advanced: false };
+    if (testScore >= (test.passing_score || 60)) {
+      autoAdvanceResult = await checkAndAutoAdvance(
+        application.id,
+        "mcq_test",
+        testScore
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "Test submitted successfully",
@@ -116,6 +128,8 @@ export async function POST(request) {
       correctAnswers,
       passed: testScore >= (test.passing_score || 60),
       overallScore,
+      autoAdvanced: autoAdvanceResult.advanced,
+      newStage: autoAdvanceResult.newStage,
       // Don't return detailed results to prevent answer sharing
     });
   } catch (error) {

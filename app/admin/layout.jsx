@@ -11,6 +11,7 @@ import {
 import { AppSidebar } from "@/components/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { ModeToggle } from "@/components/mode-toggle";
+import NotificationBell from "@/components/NotificationBell";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -67,7 +68,8 @@ export default function AdminLayout({ children }) {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <NotificationBell />
             <ModeToggle />
           </div>
         </header>

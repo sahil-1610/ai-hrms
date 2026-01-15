@@ -91,6 +91,7 @@ export async function POST(request) {
       salaryMin,
       salaryMax,
       skills,
+      numberOfPositions = 1,
       status = "draft",
     } = body;
 
@@ -174,6 +175,7 @@ export async function POST(request) {
         experience_max: experienceMax,
         salary_range,
         skills: skills || [],
+        number_of_positions: numberOfPositions,
         status,
         jd_embedding,
         created_by: session.user.id,

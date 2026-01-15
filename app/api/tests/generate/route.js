@@ -26,16 +26,25 @@ export async function POST(request) {
       );
     }
 
-    // Get job details
+    // Get job details with MCQ configuration
     const { data: job, error: jobError } = await supabaseAdmin
       .from("jobs")
-      .select("*")
+      .select("*, mcq_config")
       .eq("id", jobId)
       .single();
 
     if (jobError || !job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
+
+    // Get MCQ config (use job-specific or defaults)
+    const mcqConfig = job.mcq_config || {
+      question_count: 10,
+      duration_minutes: 30,
+      passing_score: 60,
+      difficulty: "mixed",
+      difficulty_distribution: { easy: 30, medium: 50, hard: 20 },
+    };
 
     // Check if test already exists for this job
     const { data: existingTest } = await supabaseAdmin
@@ -54,11 +63,14 @@ export async function POST(request) {
       );
     }
 
-    // Generate MCQ questions using AI
+    // Generate MCQ questions using AI with job-specific configuration
     const questions = await generateMCQ({
       jobTitle: job.title,
       skills: job.skills || [],
       experienceYears: job.experience_min || 2,
+      questionCount: mcqConfig.question_count || 10,
+      difficulty: mcqConfig.difficulty || "mixed",
+      difficultyDistribution: mcqConfig.difficulty_distribution || { easy: 30, medium: 50, hard: 20 },
     });
 
     // Validate questions format
@@ -81,15 +93,15 @@ export async function POST(request) {
       throw new Error("Invalid question structure");
     }
 
-    // Save test to database
+    // Save test to database with job-specific settings
     const { data: test, error: testError } = await supabaseAdmin
       .from("tests")
       .insert({
         job_id: jobId,
         questions: questions,
         created_by: session.user.id,
-        duration_minutes: 30, // Default 30 minutes
-        passing_score: 60, // Default 60% to pass
+        duration_minutes: mcqConfig.duration_minutes || 30,
+        passing_score: mcqConfig.passing_score || 60,
       })
       .select()
       .single();
@@ -102,17 +114,8 @@ export async function POST(request) {
       );
     }
 
-    return NextResponse.json({
-      success: true,
-      message: `Test generated successfully with ${questions.length} questions`,
-      test: {
-        id: test.id,
-        jobId: test.job_id,
-        questionCount: questions.length,
-        duration: test.duration_minutes,
-        passingScore: test.passing_score,
-      },
-    });
+    // Return the full test object so the UI can display questions immediately
+    return NextResponse.json(test);
   } catch (error) {
     console.error("Error in POST /api/tests/generate:", error);
     return NextResponse.json(

@@ -61,6 +61,7 @@ export async function PATCH(request, { params }) {
       salaryMax,
       skills,
       status,
+      numberOfPositions,
     } = body;
 
     // Build update object with only provided fields
@@ -72,6 +73,7 @@ export async function PATCH(request, { params }) {
     if (experienceMax !== undefined) updates.experience_max = experienceMax;
     if (skills !== undefined) updates.skills = skills;
     if (status !== undefined) updates.status = status;
+    if (numberOfPositions !== undefined) updates.number_of_positions = numberOfPositions;
 
     // Handle salary range
     if (salaryMin !== undefined || salaryMax !== undefined) {

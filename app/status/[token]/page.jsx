@@ -268,7 +268,8 @@ export default function StatusPage() {
             </div>
 
             {application.resume_match_score !== null &&
-              application.resume_match_score !== undefined && (
+              application.resume_match_score !== undefined &&
+              application.resume_match_score > 0 && (
                 <>
                   <Separator />
                   <div>
@@ -287,12 +288,32 @@ export default function StatusPage() {
                         }
                         className="text-lg px-4 py-1"
                       >
-                        {application.resume_match_score}% Match
+                        {Math.round(application.resume_match_score)}% Match
                       </Badge>
                     </div>
                   </div>
                 </>
               )}
+
+            {(!application.resume_match_score || application.resume_match_score === 0) && (
+              <>
+                <Separator />
+                <div>
+                  <label className="text-sm font-medium text-gray-700 flex items-center gap-1">
+                    <Award className="h-4 w-4" />
+                    Resume Analysis
+                  </label>
+                  <div className="mt-2">
+                    <Badge variant="outline" className="text-sm px-3 py-1">
+                      Pending Review
+                    </Badge>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Your resume will be analyzed by our HR team
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 

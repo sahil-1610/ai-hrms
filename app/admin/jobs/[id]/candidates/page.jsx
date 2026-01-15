@@ -609,14 +609,14 @@ export default function CandidatesPage() {
 
       {/* Candidate Detail Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto dark:bg-gray-800 dark:border-gray-700">
           {selectedCandidate && (
             <>
               <DialogHeader>
-                <DialogTitle className="text-2xl">
+                <DialogTitle className="text-2xl dark:text-gray-100">
                   {selectedCandidate.name}
                 </DialogTitle>
-                <DialogDescription>
+                <DialogDescription className="dark:text-gray-400">
                   Applied on{" "}
                   {new Date(selectedCandidate.created_at).toLocaleDateString()}
                 </DialogDescription>
@@ -659,8 +659,8 @@ export default function CandidatesPage() {
                       {/* Recommendation Badge */}
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Sparkles className="h-5 w-5 text-purple-600" />
-                          <span className="text-sm font-medium text-gray-700">
+                          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             AI Recommendation
                           </span>
                         </div>
@@ -687,9 +687,9 @@ export default function CandidatesPage() {
 
                       {/* AI Summary */}
                       {aiAnalysis.summary && (
-                        <Card className="bg-purple-50 border-purple-200">
+                        <Card className="bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800">
                           <CardContent className="pt-4">
-                            <p className="text-sm text-purple-900 leading-relaxed">
+                            <p className="text-sm text-purple-900 dark:text-purple-100 leading-relaxed">
                               {aiAnalysis.summary}
                             </p>
                           </CardContent>
@@ -701,8 +701,8 @@ export default function CandidatesPage() {
                         aiAnalysis.strengths.length > 0 && (
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <ThumbsUp className="h-4 w-4 text-green-600" />
-                              <p className="text-sm font-medium text-gray-900">
+                              <ThumbsUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 Strengths
                               </p>
                             </div>
@@ -710,9 +710,9 @@ export default function CandidatesPage() {
                               {aiAnalysis.strengths.map((strength, idx) => (
                                 <li
                                   key={idx}
-                                  className="text-sm text-gray-700 flex items-start gap-2"
+                                  className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2"
                                 >
-                                  <span className="text-green-600 mt-0.5">
+                                  <span className="text-green-600 dark:text-green-400 mt-0.5">
                                     •
                                   </span>
                                   <span>{strength}</span>
@@ -727,8 +727,8 @@ export default function CandidatesPage() {
                         aiAnalysis.concerns.length > 0 && (
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                              <AlertCircle className="h-4 w-4 text-orange-600" />
-                              <p className="text-sm font-medium text-gray-900">
+                              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                 Concerns / Gaps
                               </p>
                             </div>
@@ -736,9 +736,9 @@ export default function CandidatesPage() {
                               {aiAnalysis.concerns.map((concern, idx) => (
                                 <li
                                   key={idx}
-                                  className="text-sm text-gray-700 flex items-start gap-2"
+                                  className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2"
                                 >
-                                  <span className="text-orange-600 mt-0.5">
+                                  <span className="text-orange-600 dark:text-orange-400 mt-0.5">
                                     •
                                   </span>
                                   <span>{concern}</span>
@@ -752,8 +752,8 @@ export default function CandidatesPage() {
                       {aiAnalysis.skillsMatch && (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <Target className="h-4 w-4 text-blue-600" />
-                            <p className="text-sm font-medium text-gray-900">
+                            <Target className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                            <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                               Skills Analysis
                             </p>
                           </div>
@@ -761,7 +761,7 @@ export default function CandidatesPage() {
                             {aiAnalysis.skillsMatch.matched &&
                               aiAnalysis.skillsMatch.matched.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-medium text-green-700 mb-1.5">
+                                  <p className="text-xs font-medium text-green-700 dark:text-green-400 mb-1.5">
                                     ✓ Matched Skills
                                   </p>
                                   <div className="flex flex-wrap gap-1.5">
@@ -770,7 +770,7 @@ export default function CandidatesPage() {
                                         <Badge
                                           key={idx}
                                           variant="outline"
-                                          className="border-green-600 text-green-700"
+                                          className="border-green-600 text-green-700 dark:border-green-500 dark:text-green-400"
                                         >
                                           {skill}
                                         </Badge>
@@ -782,7 +782,7 @@ export default function CandidatesPage() {
                             {aiAnalysis.skillsMatch.missing &&
                               aiAnalysis.skillsMatch.missing.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-medium text-red-700 mb-1.5">
+                                  <p className="text-xs font-medium text-red-700 dark:text-red-400 mb-1.5">
                                     ✗ Missing Skills
                                   </p>
                                   <div className="flex flex-wrap gap-1.5">
@@ -791,7 +791,7 @@ export default function CandidatesPage() {
                                         <Badge
                                           key={idx}
                                           variant="outline"
-                                          className="border-red-600 text-red-700"
+                                          className="border-red-600 text-red-700 dark:border-red-500 dark:text-red-400"
                                         >
                                           {skill}
                                         </Badge>
@@ -803,7 +803,7 @@ export default function CandidatesPage() {
                             {aiAnalysis.skillsMatch.additional &&
                               aiAnalysis.skillsMatch.additional.length > 0 && (
                                 <div>
-                                  <p className="text-xs font-medium text-blue-700 mb-1.5">
+                                  <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mb-1.5">
                                     + Additional Skills
                                   </p>
                                   <div className="flex flex-wrap gap-1.5">
@@ -812,7 +812,7 @@ export default function CandidatesPage() {
                                         <Badge
                                           key={idx}
                                           variant="outline"
-                                          className="border-blue-600 text-blue-700"
+                                          className="border-blue-600 text-blue-700 dark:border-blue-500 dark:text-blue-400"
                                         >
                                           {skill}
                                         </Badge>
@@ -827,20 +827,20 @@ export default function CandidatesPage() {
 
                       {/* Experience Match */}
                       {aiAnalysis.experienceMatch && (
-                        <Card className="bg-gray-50 border-gray-200">
+                        <Card className="bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600">
                           <CardContent className="pt-4">
                             <div className="flex items-start gap-3">
-                              <Briefcase className="h-5 w-5 text-gray-600 mt-0.5" />
+                              <Briefcase className="h-5 w-5 text-gray-600 dark:text-gray-400 mt-0.5" />
                               <div className="space-y-1 flex-1">
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   Experience Match
                                 </p>
-                                <p className="text-sm text-gray-700">
+                                <p className="text-sm text-gray-700 dark:text-gray-300">
                                   {aiAnalysis.experienceMatch.analysis}
                                 </p>
                                 {aiAnalysis.experienceMatch.candidateYears !==
                                   null && (
-                                  <p className="text-xs text-gray-600">
+                                  <p className="text-xs text-gray-600 dark:text-gray-400">
                                     Candidate has{" "}
                                     {aiAnalysis.experienceMatch.candidateYears}{" "}
                                     years of experience
@@ -848,7 +848,7 @@ export default function CandidatesPage() {
                                 )}
                               </div>
                               {aiAnalysis.experienceMatch.meetsRequirement && (
-                                <CheckCircle className="h-5 w-5 text-green-600" />
+                                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
                               )}
                             </div>
                           </CardContent>
@@ -857,7 +857,7 @@ export default function CandidatesPage() {
 
                       {/* Re-analyzed timestamp */}
                       {aiAnalysis.reanalyzedAt && (
-                        <p className="text-xs text-gray-500 text-center">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
                           Last analyzed on{" "}
                           {new Date(aiAnalysis.reanalyzedAt).toLocaleString()}{" "}
                           by {aiAnalysis.reanalyzedBy || "system"}
@@ -865,15 +865,15 @@ export default function CandidatesPage() {
                       )}
                     </div>
                   ) : (
-                    <Card className="bg-yellow-50 border-yellow-200">
+                    <Card className="bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
                       <CardContent className="pt-4">
                         <div className="flex items-start gap-3">
-                          <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5" />
+                          <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
                           <div>
-                            <p className="text-sm font-medium text-yellow-900">
+                            <p className="text-sm font-medium text-yellow-900 dark:text-yellow-100">
                               No AI Analysis Available
                             </p>
-                            <p className="text-sm text-yellow-700 mt-1">
+                            <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                               This application was submitted before AI analysis
                               was enabled. Click &quot;Re-analyze with AI&quot;
                               to generate insights.
@@ -890,29 +890,29 @@ export default function CandidatesPage() {
                 {/* Contact Information */}
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-500">Email</p>
-                    <p className="text-base">{selectedCandidate.email}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+                    <p className="text-base dark:text-gray-100">{selectedCandidate.email}</p>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-gray-500">Phone</p>
-                    <p className="text-base">{selectedCandidate.phone}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Phone</p>
+                    <p className="text-base dark:text-gray-100">{selectedCandidate.phone}</p>
                   </div>
                   {selectedCandidate.current_company && (
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-500">
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                         Current Company
                       </p>
-                      <p className="text-base">
+                      <p className="text-base dark:text-gray-100">
                         {selectedCandidate.current_company}
                       </p>
                     </div>
                   )}
                   {selectedCandidate.experience && (
                     <div className="space-y-1">
-                      <p className="text-sm font-medium text-gray-500">
+                      <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
                         Experience
                       </p>
-                      <p className="text-base">
+                      <p className="text-base dark:text-gray-100">
                         {selectedCandidate.experience} years
                       </p>
                     </div>
@@ -925,7 +925,7 @@ export default function CandidatesPage() {
                 {selectedCandidate.skills &&
                   selectedCandidate.skills.length > 0 && (
                     <div className="space-y-3">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                         Skills
                       </p>
                       <div className="flex flex-wrap gap-2">
@@ -941,10 +941,10 @@ export default function CandidatesPage() {
                 {/* Education */}
                 {selectedCandidate.education && (
                   <div className="space-y-3">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       Education
                     </p>
-                    <p className="text-base text-gray-700">
+                    <p className="text-base text-gray-700 dark:text-gray-300">
                       {selectedCandidate.education}
                     </p>
                   </div>
@@ -953,10 +953,10 @@ export default function CandidatesPage() {
                 {/* Cover Letter */}
                 {selectedCandidate.cover_letter && (
                   <div className="space-y-3">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       Cover Letter
                     </p>
-                    <p className="text-base text-gray-700 whitespace-pre-wrap">
+                    <p className="text-base text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                       {selectedCandidate.cover_letter}
                     </p>
                   </div>
@@ -966,7 +966,7 @@ export default function CandidatesPage() {
 
                 {/* Actions */}
                 <div className="space-y-3">
-                  <p className="text-sm font-medium text-gray-900">Actions</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">Actions</p>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
