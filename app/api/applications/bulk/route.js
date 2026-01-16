@@ -71,9 +71,10 @@ async function handleBulkStatusUpdate(applicationIds, data) {
         throw new Error("Status is required for bulk status update");
     }
 
-    const validStatuses = ["pending", "shortlisted", "in_progress", "rejected", "hired"];
+    // Valid statuses matching DB constraint: submitted, screening, testing, shortlisted, interviewing, offered, hired, rejected
+    const validStatuses = ["submitted", "screening", "testing", "shortlisted", "interviewing", "offered", "hired", "rejected"];
     if (!validStatuses.includes(status)) {
-        throw new Error(`Invalid status: ${status}`);
+        throw new Error(`Invalid status: ${status}. Valid values are: ${validStatuses.join(", ")}`);
     }
 
     const { data: updated, error } = await supabaseAdmin
@@ -107,6 +108,16 @@ async function handleBulkAdvanceStage(applicationIds, data) {
     if (fetchError) throw fetchError;
 
     const stages = ["resume_screening", "mcq_test", "async_interview", "live_interview", "offer"];
+    // Map stages to appropriate statuses (matching DB constraint)
+    const stageToStatus = {
+        resume_screening: "screening",
+        mcq_test: "testing",
+        async_interview: "interviewing",
+        live_interview: "interviewing",
+        offer: "offered",
+        hired: "hired",
+        rejected: "rejected",
+    };
     const results = [];
 
     for (const app of applications) {
@@ -122,11 +133,14 @@ async function handleBulkAdvanceStage(applicationIds, data) {
             continue;
         }
 
+        // Determine appropriate status for the new stage
+        const newStatus = newStage === "hired" ? "hired" : (stageToStatus[newStage] || "screening");
+
         const { error: updateError } = await supabaseAdmin
             .from("applications")
             .update({
                 current_stage: newStage,
-                status: newStage === "hired" ? "hired" : "in_progress",
+                status: newStatus,
                 updated_at: new Date().toISOString(),
             })
             .eq("id", app.id);

@@ -143,6 +143,21 @@ export async function POST(request) {
       communicationScore
     );
 
+    // Create notification for HR users
+    try {
+      await supabaseAdmin.from("notifications").insert({
+        hr_user_id: null,
+        type: "interview_completed",
+        title: "Async Interview Completed",
+        message: `${application.name} completed async interview for ${application.jobs?.title || "job"} with score ${communicationScore}%`,
+        link: `/admin/candidates/${application.id}`,
+        application_id: application.id,
+        job_id: application.job_id,
+      });
+    } catch (notificationError) {
+      console.error("Error creating notification:", notificationError);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Interview submitted successfully",

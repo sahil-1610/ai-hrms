@@ -154,7 +154,7 @@ export default function CareersApplicationSuccessPage() {
               </div>
             </div>
 
-            {matchScore && matchScore !== "undefined" && matchScore !== "null" ? (
+            {matchScore && matchScore !== "undefined" && matchScore !== "null" && matchScore !== "0" && parseInt(matchScore) > 0 ? (
               <div className="flex items-start gap-3 p-4 rounded-xl bg-gray-50">
                 <UserCheck className="h-5 w-5 text-gray-400 mt-0.5" />
                 <div>
@@ -178,6 +178,9 @@ export default function CareersApplicationSuccessPage() {
                   >
                     {matchScore}% Match
                   </span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Based on AI analysis of your resume
+                  </p>
                 </div>
               </div>
             ) : (

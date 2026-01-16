@@ -135,7 +135,7 @@ function getStatusFromStage(stage) {
     hired: "hired",
     rejected: "rejected",
   };
-  return stageStatusMap[stage] || "new";
+  return stageStatusMap[stage] || "screening";
 }
 
 // Default pipeline config

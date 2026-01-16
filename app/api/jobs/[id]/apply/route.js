@@ -3,18 +3,21 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { sendEmail } from "@/lib/email";
 import { applicationSubmittedTemplate } from "@/lib/emailTemplates";
+import { extractResumeText } from "@/lib/resumeParser";
+import { matchResumeToJob, generateEmbedding } from "@/lib/openai";
+import { calculateMatchScore } from "@/utils/scoring";
 
 // POST /api/jobs/[id]/apply - Submit job application (NO AUTH REQUIRED)
 // Candidates don't need accounts - they submit with their info
-// Resume is uploaded to Cloudinary only - parsing/analysis happens later on admin dashboard
+// Resume is parsed and AI analysis runs automatically during submission
 export async function POST(request, { params }) {
   try {
     const { id: jobId } = await params;
 
-    // Check if job exists and is active
+    // Check if job exists and is active (including fields needed for AI analysis)
     const { data: job, error: jobError } = await supabaseAdmin
       .from("jobs")
-      .select("id, title, status")
+      .select("id, title, status, jd_text, jd_embedding, skills, experience_min, experience_max, location")
       .eq("id", jobId)
       .single();
 
@@ -112,6 +115,7 @@ export async function POST(request, { params }) {
 
     // Upload resume to Cloudinary
     let resumeUrl;
+    let resumePublicId;
     try {
       const uploadResult = await uploadToCloudinary(
         buffer,
@@ -119,6 +123,7 @@ export async function POST(request, { params }) {
         "hrms/resumes"
       );
       resumeUrl = uploadResult.url;
+      resumePublicId = uploadResult.publicId;
     } catch (uploadError) {
       console.error("Error uploading resume to Cloudinary:", uploadError);
       return NextResponse.json(
@@ -130,6 +135,77 @@ export async function POST(request, { params }) {
       );
     }
 
+    // Parse resume text from the buffer
+    let resumeText = null;
+    try {
+      resumeText = await extractResumeText(buffer, resumeFile.type);
+      console.log(`Extracted ${resumeText?.length || 0} characters from resume`);
+    } catch (parseError) {
+      console.error("Error parsing resume text:", parseError);
+      // Don't fail the application if parsing fails - admin can analyze later
+    }
+
+    // Run AI analysis if we have resume text and job description
+    let resumeEmbedding = null;
+    let matchScore = null;
+    let aiMatchData = null;
+
+    if (resumeText && resumeText.length >= 50 && job.jd_text) {
+      try {
+        console.log("Running AI resume analysis...");
+
+        // Generate resume embedding for vector search
+        resumeEmbedding = await generateEmbedding(resumeText);
+
+        // Calculate cosine similarity score if job has embedding
+        let cosineSimilarityScore = 0;
+        if (job.jd_embedding) {
+          cosineSimilarityScore = calculateMatchScore(resumeEmbedding, job.jd_embedding);
+        }
+
+        // Perform AI match analysis
+        const aiMatchAnalysis = await matchResumeToJob(resumeText, job.jd_text, {
+          title: job.title,
+          skills: job.skills || [],
+          minExp: job.experience_min || 0,
+          maxExp: job.experience_max || 5,
+          location: job.location,
+        });
+
+        // Use AI score as primary match score
+        matchScore = aiMatchAnalysis.matchScore;
+
+        // Store detailed analysis data
+        aiMatchData = JSON.stringify({
+          recommendation: aiMatchAnalysis.recommendation,
+          strengths: aiMatchAnalysis.strengths,
+          concerns: aiMatchAnalysis.concerns,
+          skillsMatch: aiMatchAnalysis.skillsMatch,
+          experienceMatch: aiMatchAnalysis.experienceMatch,
+          summary: aiMatchAnalysis.summary,
+          aiScore: aiMatchAnalysis.matchScore,
+          cosineScore: cosineSimilarityScore,
+          analyzedAt: new Date().toISOString(),
+          analyzedBy: "auto",
+        });
+
+        console.log("AI Analysis complete:", {
+          matchScore,
+          recommendation: aiMatchAnalysis.recommendation,
+          cosineScore: cosineSimilarityScore,
+        });
+      } catch (aiError) {
+        console.error("Error in AI analysis:", aiError);
+        // Don't fail the application if AI analysis fails - can be done later by admin
+      }
+    } else {
+      console.log("Skipping AI analysis:", {
+        hasResumeText: !!resumeText,
+        resumeTextLength: resumeText?.length || 0,
+        hasJobDescription: !!job.jd_text,
+      });
+    }
+
     // Parse skills array
     const skillsArray = skills
       ? skills
@@ -138,7 +214,7 @@ export async function POST(request, { params }) {
           .filter(Boolean)
       : [];
 
-    // Create application - resume parsing and AI analysis will be done later by admin
+    // Create application with AI analysis results
     const { data: application, error: appError } = await supabaseAdmin
       .from("applications")
       .insert({
@@ -152,7 +228,12 @@ export async function POST(request, { params }) {
         education,
         cover_letter: coverLetter,
         resume_url: resumeUrl,
-        // resume_text, resume_embedding, resume_match_score will be set when admin analyzes
+        resume_public_id: resumePublicId,
+        resume_text: resumeText,
+        resume_embedding: resumeEmbedding,
+        resume_match_score: matchScore,
+        overall_score: matchScore,
+        ai_match_data: aiMatchData,
         status: "submitted",
         current_stage: "resume_screening",
         // application_token is auto-generated by database
@@ -186,6 +267,23 @@ export async function POST(request, { params }) {
       // Don't fail the application if email fails
     }
 
+    // Create notification for HR users
+    try {
+      await supabaseAdmin.from("notifications").insert({
+        hr_user_id: null, // null means broadcast to all HR users
+        type: "new_application",
+        title: "New Application Received",
+        message: `${name} applied for ${job.title}`,
+        link: `/admin/candidates/${application.id}`,
+        application_id: application.id,
+        job_id: jobId,
+      });
+      console.log("Notification created for new application");
+    } catch (notificationError) {
+      console.error("Error creating notification:", notificationError);
+      // Don't fail the application if notification fails
+    }
+
     return NextResponse.json(
       {
         success: true,
@@ -196,6 +294,7 @@ export async function POST(request, { params }) {
           email: application.email,
           token: application.application_token,
           jobTitle: job.title,
+          matchScore: matchScore,
         },
       },
       { status: 201 }

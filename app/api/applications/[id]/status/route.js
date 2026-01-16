@@ -28,14 +28,16 @@ export async function PATCH(request, { params }) {
     const body = await request.json();
     const { status } = body;
 
-    // Validate status
+    // Validate status (must match DB constraint: applications_status_check)
     const validStatuses = [
       "submitted",
+      "screening",
+      "testing",
       "shortlisted",
-      "rejected",
       "interviewing",
       "offered",
       "hired",
+      "rejected",
     ];
     if (!status || !validStatuses.includes(status)) {
       return NextResponse.json(

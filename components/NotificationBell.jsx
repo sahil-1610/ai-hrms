@@ -176,9 +176,14 @@ export default function NotificationBell() {
                             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                         </div>
                     ) : notifications.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 p-4">
-                            <Bell className="h-8 w-8 mb-2 opacity-50" />
-                            <p className="text-sm">No notifications</p>
+                        <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400 p-6">
+                            <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
+                                <Bell className="h-8 w-8 opacity-50" />
+                            </div>
+                            <p className="text-sm font-medium mb-1">No notifications yet</p>
+                            <p className="text-xs text-center text-gray-400 dark:text-gray-500">
+                                You'll see notifications here when candidates apply, complete tests, or finish interviews.
+                            </p>
                         </div>
                     ) : (
                         <div className="divide-y dark:divide-gray-700">
@@ -187,14 +192,15 @@ export default function NotificationBell() {
                                 const colorClass =
                                     NOTIFICATION_COLORS[notification.type] ||
                                     NOTIFICATION_COLORS.job_update;
+                                const isUnread = !notification.is_read;
 
                                 return (
                                     <div
                                         key={notification.id}
                                         className={`p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer ${
-                                            !notification.is_read
-                                                ? "bg-blue-50/50 dark:bg-blue-900/10"
-                                                : ""
+                                            isUnread
+                                                ? "bg-blue-50/50 dark:bg-blue-900/20"
+                                                : "opacity-75"
                                         }`}
                                         onClick={() => handleNotificationClick(notification)}
                                     >
@@ -204,6 +210,7 @@ export default function NotificationBell() {
                                                     notification={notification}
                                                     Icon={Icon}
                                                     colorClass={colorClass}
+                                                    isUnread={isUnread}
                                                 />
                                             </Link>
                                         ) : (
@@ -211,6 +218,7 @@ export default function NotificationBell() {
                                                 notification={notification}
                                                 Icon={Icon}
                                                 colorClass={colorClass}
+                                                isUnread={isUnread}
                                             />
                                         )}
                                     </div>
@@ -235,7 +243,7 @@ export default function NotificationBell() {
     );
 }
 
-function NotificationContent({ notification, Icon, colorClass }) {
+function NotificationContent({ notification, Icon, colorClass, isUnread }) {
     return (
         <div className="flex gap-3">
             <div
@@ -245,14 +253,20 @@ function NotificationContent({ notification, Icon, colorClass }) {
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-medium dark:text-gray-100 truncate">
+                    <p className={`text-sm truncate dark:text-gray-100 ${
+                        isUnread ? "font-semibold" : "font-normal text-gray-600 dark:text-gray-400"
+                    }`}>
                         {notification.title}
                     </p>
-                    {!notification.is_read && (
+                    {isUnread && (
                         <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
                     )}
                 </div>
-                <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
+                <p className={`text-xs line-clamp-2 ${
+                    isUnread
+                        ? "text-gray-700 dark:text-gray-300"
+                        : "text-gray-500 dark:text-gray-500"
+                }`}>
                     {notification.message}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">

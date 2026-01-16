@@ -4,59 +4,9 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { supabaseAdmin } from "@/lib/supabase";
 import { matchResumeToJob, generateEmbedding } from "@/lib/openai";
 import { calculateMatchScore } from "@/utils/scoring";
-import { extractTextFromPDF, extractTextFromDOCX } from "@/lib/resumeParser";
-
-/**
- * Fetch resume file from Cloudinary URL and return as buffer
- * Uses internal proxy API if direct fetch fails
- */
-async function fetchResumeFromUrl(url, applicationId) {
-  // First try direct fetch
-  try {
-    const response = await fetch(url);
-    if (response.ok) {
-      const contentType = response.headers.get('content-type') || '';
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
-
-      // Check if we got actual PDF content (PDFs start with %PDF)
-      const header = buffer.slice(0, 5).toString();
-      if (header.startsWith('%PDF') || contentType.includes('pdf') || contentType.includes('octet-stream')) {
-        console.log(`Successfully fetched resume: ${buffer.length} bytes, content-type: ${contentType}`);
-        return buffer;
-      } else {
-        console.log(`Received non-PDF content: ${header}, content-type: ${contentType}`);
-        throw new Error('Received non-PDF content from Cloudinary');
-      }
-    } else {
-      console.log(`Direct fetch failed with status: ${response.status}`);
-      throw new Error(`Fetch failed: ${response.status}`);
-    }
-  } catch (directError) {
-    console.error("Direct fetch failed:", directError.message);
-    throw new Error(`Failed to fetch resume: ${directError.message}`);
-  }
-}
-
-/**
- * Detect file type from URL or content-type
- * Defaults to PDF for Cloudinary raw URLs without extension
- */
-function getFileType(url) {
-  const lowercaseUrl = url.toLowerCase();
-  if (lowercaseUrl.includes(".pdf")) {
-    return "application/pdf";
-  } else if (lowercaseUrl.includes(".docx")) {
-    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  } else if (lowercaseUrl.includes(".doc")) {
-    return "application/msword";
-  }
-  // Default to PDF for Cloudinary raw uploads (resumes are typically PDFs)
-  return "application/pdf";
-}
 
 // POST /api/applications/[id]/analyze - Analyze candidate resume (HR only)
-// Fetches resume from Cloudinary, parses text, and runs AI analysis
+// Uses already-parsed resume_text from database, no need to fetch from Cloudinary
 export async function POST(request, { params }) {
   try {
     const session = await getServerSession(authOptions);
@@ -71,7 +21,7 @@ export async function POST(request, { params }) {
 
     const { id: applicationId } = await params;
 
-    // Get application with job details
+    // Get application with job details and resume_text
     const { data: application, error: appError } = await supabaseAdmin
       .from("applications")
       .select("*, jobs(*)")
@@ -85,13 +35,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (!application.resume_url) {
-      return NextResponse.json(
-        { error: "No resume URL found for this application" },
-        { status: 400 }
-      );
-    }
-
     const job = application.jobs;
 
     if (!job || !job.jd_text) {
@@ -101,22 +44,12 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Fetch resume from Cloudinary
-    console.log(`Fetching resume from: ${application.resume_url}`);
-    const resumeBuffer = await fetchResumeFromUrl(application.resume_url);
-    const fileType = getFileType(application.resume_url);
+    // Use the already-parsed resume_text from the database
+    let resumeText = application.resume_text;
 
-    // Extract text from resume
-    let resumeText;
-    try {
-      if (fileType === "application/pdf") {
-        resumeText = await extractTextFromPDF(resumeBuffer);
-      } else {
-        resumeText = await extractTextFromDOCX(resumeBuffer);
-      }
-    } catch (extractError) {
-      console.error("Error extracting text from resume:", extractError);
-      // Fall back to basic info if text extraction fails
+    // If resume_text is not available, use fallback info
+    if (!resumeText || resumeText.length < 50) {
+      console.log("Resume text not found in DB, using fallback info");
       resumeText = `
         Candidate: ${application.name}
         Email: ${application.email}
@@ -129,7 +62,7 @@ export async function POST(request, { params }) {
       `.trim();
     }
 
-    console.log(`Extracted ${resumeText.length} characters from resume`);
+    console.log(`Using resume text: ${resumeText.length} characters`);
 
     // Generate resume embedding for vector search
     const resumeEmbedding = await generateEmbedding(resumeText);
@@ -161,7 +94,6 @@ export async function POST(request, { params }) {
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("applications")
       .update({
-        resume_text: resumeText,
         resume_embedding: resumeEmbedding,
         resume_match_score: finalMatchScore,
         overall_score: finalMatchScore,

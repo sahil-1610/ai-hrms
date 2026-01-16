@@ -18,7 +18,10 @@
       "mcp__supabase__list_migrations",
       "Bash(curl:*)",
       "Bash(powershell -Command \"Invoke-WebRequest:*)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(ls -la:*)",
+      "Bash(npm ls:*)",
+      "Bash(xxd:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

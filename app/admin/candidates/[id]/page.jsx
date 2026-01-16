@@ -705,10 +705,10 @@ export default function CandidateDetailPage() {
                 <div className="flex gap-2">
                   {candidate.resume_url && (
                     <Button variant="outline" size="sm" asChild>
-                      <a href={`/api/applications/${params.id}/resume`} target="_blank" rel="noopener noreferrer">
+                      <Link href={`/resume/${params.id}`}>
                         <FileText className="mr-2 h-4 w-4" />
                         View Resume
-                      </a>
+                      </Link>
                     </Button>
                   )}
                   <Button

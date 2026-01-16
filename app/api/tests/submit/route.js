@@ -120,6 +120,21 @@ export async function POST(request) {
       );
     }
 
+    // Create notification for HR users
+    try {
+      await supabaseAdmin.from("notifications").insert({
+        hr_user_id: null,
+        type: "test_completed",
+        title: "MCQ Test Completed",
+        message: `${application.name} completed MCQ test for ${application.jobs?.title || "job"} with score ${testScore}%`,
+        link: `/admin/candidates/${application.id}`,
+        application_id: application.id,
+        job_id: application.job_id,
+      });
+    } catch (notificationError) {
+      console.error("Error creating notification:", notificationError);
+    }
+
     return NextResponse.json({
       success: true,
       message: "Test submitted successfully",
