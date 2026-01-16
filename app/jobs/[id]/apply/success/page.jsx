@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,10 +21,11 @@ import {
   Copy,
   Check,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function ApplicationSuccessPage() {
+function ApplicationSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [copied, setCopied] = useState(false);
@@ -268,5 +269,23 @@ export default function ApplicationSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function ApplicationSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <ApplicationSuccessContent />
+    </Suspense>
   );
 }

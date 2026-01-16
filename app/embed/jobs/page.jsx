@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Loader2,
@@ -37,7 +37,8 @@ import { Badge } from "@/components/ui/badge";
  *   ?hideHeader=true - Hide the company header
  *   ?compact=true - Use compact card layout
  */
-export default function EmbedJobsPage() {
+
+function EmbedJobsContent() {
   const searchParams = useSearchParams();
   const [jobs, setJobs] = useState([]);
   const [settings, setSettings] = useState(null);
@@ -327,5 +328,23 @@ export default function EmbedJobsPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function LoadingFallback() {
+  return (
+    <div className="min-h-[400px] flex items-center justify-center bg-white">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function EmbedJobsPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <EmbedJobsContent />
+    </Suspense>
   );
 }

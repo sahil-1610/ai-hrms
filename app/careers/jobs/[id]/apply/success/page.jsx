@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -16,10 +16,11 @@ import {
   Clock,
   UserCheck,
   ClipboardCheck,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function CareersApplicationSuccessPage() {
+function CareersApplicationSuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const params = useParams();
@@ -342,5 +343,23 @@ export default function CareersApplicationSuccessPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function CareersApplicationSuccessPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <CareersApplicationSuccessContent />
+    </Suspense>
   );
 }

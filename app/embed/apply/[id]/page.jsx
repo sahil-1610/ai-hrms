@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -130,7 +130,7 @@ function ErrorDialog({ open, onClose, errorType, errorMessage, email, jobTitle, 
  *   ?theme=light|dark - Force a theme
  *   ?hideHeader=true - Hide the job header
  */
-export default function EmbedApplyPage() {
+function EmbedApplyContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -583,5 +583,23 @@ export default function EmbedApplyPage() {
         onRetry={() => setErrorDialog({ open: false, type: null, message: "" })}
       />
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+    </div>
+  );
+}
+
+// Main export with Suspense boundary
+export default function EmbedApplyPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <EmbedApplyContent />
+    </Suspense>
   );
 }
